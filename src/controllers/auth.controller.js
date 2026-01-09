@@ -3,7 +3,7 @@ import { hashPassword, comparePassword } from "../utils/hash.js";
 import { signToken } from "../utils/jwt.js";
 
 /* ======================================================
-   TOURIST REGISTER
+   TOURIST REGISTER (DEFAULT ROLE)
    POST /api/auth/register
    ====================================================== */
 export const registerTourist = async (req, res) => {
@@ -44,7 +44,7 @@ export const registerTourist = async (req, res) => {
       [user.user_id, full_name, country || null, phone || null]
     );
 
-    // Create JWT
+    // JWT
     const token = signToken({
       user_id: user.user_id,
       role: user.role
@@ -67,7 +67,7 @@ export const registerTourist = async (req, res) => {
 };
 
 /* ======================================================
-   LOGIN (ALL ROLES – TOURIST USED HERE)
+   LOGIN (ALL ROLES)
    POST /api/auth/login
    ====================================================== */
 export const login = async (req, res) => {
@@ -90,17 +90,28 @@ export const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    if (user.status !== "active") {
+    /* --------------------------------------
+       ROLE-BASED STATUS CHECK
+       -------------------------------------- */
+    if (user.role === "guide" && user.status === "pending") {
       return res.status(403).json({
-        message: "Account not active"
+        message: "Guide account pending verification. Please upload documents."
       });
     }
 
+    if (user.status !== "active") {
+      return res.status(403).json({
+        message: "Account is not active"
+      });
+    }
+
+    // Password check
     const isMatch = await comparePassword(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // JWT
     const token = signToken({
       user_id: user.user_id,
       role: user.role
