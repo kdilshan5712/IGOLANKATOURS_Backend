@@ -51,7 +51,7 @@ export const registerGuide = async (req, res) => {
 
     const userRes = await db.query(
       `INSERT INTO users (email, password_hash, role, status)
-       VALUES ($1, $2, 'guide', 'pending')
+       VALUES ($1, $2, 'guide', 'active')
        RETURNING user_id`,
       [normalizedEmail, passwordHash]
     );
@@ -86,21 +86,55 @@ export const registerGuide = async (req, res) => {
    UPLOAD GUIDE DOCUMENTS
    ====================================================== */
 export const uploadGuideDocuments = async (req, res) => {
+  console.log("\n================================================");
+  console.log("=== DOCUMENT UPLOAD REQUEST RECEIVED ===");
+  console.log("================================================\n");
+  
+  // Immediate validation of imports
+  if (!supabase) {
+    console.error("❌ CRITICAL: supabase is undefined!");
+    return res.status(500).json({ message: "Storage service not configured" });
+  }
+  if (!db) {
+    console.error("❌ CRITICAL: db is undefined!");
+    return res.status(500).json({ message: "Database service not configured" });
+  }
+  
   try {
+    console.log("📥 Request details:", {
+      user_exists: !!req.user,
+      user_id: req.user?.user_id,
+      has_file: !!req.file,
+      has_body: !!req.body,
+      document_type: req.body?.document_type,
+      body_keys: Object.keys(req.body || {}),
+      file_details: req.file ? {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        encoding: req.file.encoding,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        buffer_exists: !!req.file.buffer,
+        buffer_length: req.file.buffer?.length
+      } : 'NO FILE'
+    });
+
     const userId = req.user.user_id;
     const { document_type } = req.body;
     const file = req.file;
 
     // Validate required fields
     if (!file) {
+      console.error("❌ No file in request");
       return res.status(400).json({
-        message: "Document file is required"
+        message: "Document file is required. Please select a file to upload."
       });
     }
 
     if (!document_type) {
+      console.error("❌ No document_type in request");
       return res.status(400).json({
-        message: "Document type is required"
+        message: "Document type is required. Please specify: license, certificate, id_card, or other"
       });
     }
 
@@ -114,7 +148,10 @@ export const uploadGuideDocuments = async (req, res) => {
       });
     }
 
+    console.log("✅ Validation passed");
+
     /* ---------- CHECK GUIDE ---------- */
+    console.log("🔍 Checking guide profile...");
     const guideRes = await db.query(
       `SELECT guide_id, approved
        FROM tour_guide
@@ -129,6 +166,7 @@ export const uploadGuideDocuments = async (req, res) => {
     }
 
     const guide = guideRes.rows[0];
+    console.log("✅ Guide found:", { guide_id: guide.guide_id, approved: guide.approved });
 
     if (guide.approved) {
       return res.status(400).json({
@@ -137,9 +175,10 @@ export const uploadGuideDocuments = async (req, res) => {
     }
 
     /* ---------- PREVENT DUPLICATE DOC ---------- */
+    console.log("🔍 Checking for duplicate documents...");
     const existingDoc = await db.query(
       `SELECT document_id
-       FROM guide_document
+       FROM guide_documents
        WHERE guide_id = $1 AND document_type = $2`,
       [guide.guide_id, normalizedType]
     );
@@ -150,33 +189,109 @@ export const uploadGuideDocuments = async (req, res) => {
       });
     }
 
+    console.log("✅ No duplicate documents");
+
     /* ---------- UPLOAD TO SUPABASE ---------- */
     // Sanitize filename to prevent path traversal
     const sanitizedFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
     const filePath = `guide_${guide.guide_id}/${Date.now()}_${sanitizedFilename}`;
 
-    const { data, error } = await supabase.storage
-      .from("guide-documents")
-      .upload(filePath, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false
+    console.log("📤 Uploading to Supabase:", {
+      bucket: "guide-documents",
+      path: filePath,
+      size: file.size,
+      type: file.mimetype,
+      hasBuffer: !!file.buffer,
+      bufferLength: file.buffer?.length
+    });
+
+    // Ensure buffer exists
+    if (!file.buffer || file.buffer.length === 0) {
+      console.error("❌ File buffer is empty");
+      return res.status(400).json({
+        message: "File upload failed: empty file buffer"
       });
+    }
+
+    let uploadResult;
+    try {
+      console.log("🔄 Calling supabase.storage.from().upload()...");
+      
+      // Use the correct Supabase Storage upload API
+      const { data, error } = await supabase.storage
+        .from("guide-documents")
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false
+        });
+      
+      console.log("✅ Upload call completed");
+      uploadResult = { data, error };
+      
+    } catch (uploadError) {
+      console.error("❌ Supabase upload exception:", {
+        name: uploadError.name,
+        message: uploadError.message,
+        stack: uploadError.stack
+      });
+      return res.status(500).json({
+        message: "File storage failed",
+        detail: uploadError.message
+      });
+    }
+
+    const { data, error } = uploadResult;
+    
+    console.log("📊 Upload result:", {
+      hasData: !!data,
+      hasError: !!error,
+      data: data,
+      error: error
+    });
 
     if (error) {
-      console.error("❌ Supabase upload error:", error);
+      console.error("❌ Supabase upload error:", {
+        message: error.message,
+        statusCode: error.statusCode,
+        error: error
+      });
+      
+      // Provide more specific error messages
+      if (error.message?.includes("Bucket not found")) {
+        return res.status(500).json({
+          message: "Storage configuration error. Please contact support.",
+          detail: "Bucket 'guide-documents' not found"
+        });
+      }
+      
+      if (error.message?.includes("already exists")) {
+        return res.status(409).json({
+          message: "A file with this name already exists. Please try again."
+        });
+      }
+      
       return res.status(500).json({
-        message: "File storage failed. Please try again."
+        message: "File storage failed. Please try again.",
+        detail: error.message
       });
     }
 
     console.log("✅ Uploaded to Supabase:", data);
 
     /* ---------- SAVE TO DATABASE ---------- */
+    console.log("💾 Saving to database:", {
+      guide_id: guide.guide_id,
+      document_type: normalizedType,
+      file_name: file.originalname
+    });
+    
     await db.query(
-      `INSERT INTO guide_document (guide_id, document_type, document_url, verified)
-       VALUES ($1, $2, $3, false)`,
-      [guide.guide_id, normalizedType, filePath]
+      `INSERT INTO guide_documents (guide_id, document_type, document_url, file_name, file_size, mime_type, verified)
+       VALUES ($1, $2, $3, $4, $5, $6, false)`,
+      [guide.guide_id, normalizedType, filePath, file.originalname, file.size, file.mimetype]
     );
+    
+    console.log("✅ Document saved to database");
 
     // Get guide email for notification
     const guideEmailResult = await db.query(
@@ -203,8 +318,29 @@ export const uploadGuideDocuments = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("❌ Guide uploadDocuments error:", err);
-    res.status(500).json({ message: "Document upload failed" });
+    console.error("\n❌❌❌ UPLOAD FAILED ❌❌❌");
+    console.error("Error details:", {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      name: err.name,
+      fullError: err
+    });
+    console.error("❌❌❌❌❌❌❌❌❌❌❌❌❌\n");
+    
+    // Check if response was already sent
+    if (res.headersSent) {
+      console.error("❌ Headers already sent, cannot send error response");
+      return;
+    }
+    
+    // Return more specific error information
+    return res.status(500).json({ 
+      message: "Document upload failed",
+      error: err.message,
+      detail: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
@@ -223,6 +359,9 @@ export const getGuideProfile = async (req, res) => {
          tg.full_name,
          tg.contact_number,
          tg.approved,
+         tg.rejection_reason,
+         tg.rejected_at,
+         tg.approved_at,
          u.email,
          u.status,
          u.email_verified
@@ -246,21 +385,27 @@ export const getGuideProfile = async (req, res) => {
          document_url,
          verified,
          uploaded_at
-       FROM guide_document
+       FROM guide_documents
        WHERE guide_id = $1
        ORDER BY uploaded_at DESC`,
       [guide.guide_id]
     );
 
     res.json({
-      guide_id: guide.guide_id,
-      full_name: guide.full_name,
-      contact_number: guide.contact_number,
-      email: guide.email,
-      approved: guide.approved,
-      status: guide.status,
-      email_verified: guide.email_verified,
-      documents: docsResult.rows
+      success: true,
+      guide: {
+        guide_id: guide.guide_id,
+        full_name: guide.full_name,
+        contact_number: guide.contact_number,
+        email: guide.email,
+        approved: guide.approved,
+        status: guide.status,
+        email_verified: guide.email_verified,
+        rejection_reason: guide.rejection_reason,
+        rejected_at: guide.rejected_at,
+        approved_at: guide.approved_at,
+        documents: docsResult.rows
+      }
     });
   } catch (err) {
     console.error("❌ getGuideProfile error:", err);
@@ -308,7 +453,7 @@ export const getGuideDashboard = async (req, res) => {
       `SELECT 
          COUNT(*) FILTER (WHERE verified = true) as verified_docs,
          COUNT(*) FILTER (WHERE verified = false) as pending_docs
-       FROM guide_document
+       FROM guide_documents
        WHERE guide_id = $1`,
       [guide.guide_id]
     );
@@ -333,15 +478,100 @@ export const getGuideDashboard = async (req, res) => {
     res.status(500).json({ message: "Failed to load dashboard" });
   }
 };
-        status: "pending"
+
+/* ======================================================
+   GET GUIDE ASSIGNED BOOKINGS
+   ====================================================== */
+/**
+ * GET MY ASSIGNED TOURS
+ * Guide fetches all bookings assigned to them
+ * GET /api/guide/my-tours
+ * Auth: Required (Guide only)
+ */
+export const getGuideBookings = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    // Get guide_id from user_id
+    const guideResult = await db.query(
+      `SELECT guide_id FROM tour_guide WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (guideResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Guide profile not found" 
+      });
+    }
+
+    const guideId = guideResult.rows[0].guide_id;
+
+    // Get all bookings assigned to this guide using new column name
+    const bookingsResult = await db.query(
+      `SELECT 
+        b.booking_id,
+        b.booking_reference,
+        b.travel_date,
+        b.travelers,
+        b.total_price,
+        b.status,
+        b.special_requests,
+        b.guide_assigned_at,
+        b.created_at,
+        p.package_id,
+        p.name as package_name,
+        p.duration,
+        p.category,
+        p.description,
+        p.destination,
+        t.full_name as tourist_name,
+        t.phone as tourist_phone,
+        u.email as tourist_email,
+        u.user_id as tourist_user_id
+       FROM bookings b
+       JOIN tour_packages p ON b.package_id = p.package_id
+       JOIN users u ON b.user_id = u.user_id
+       LEFT JOIN tourist t ON u.user_id = t.user_id
+       WHERE b.assigned_guide_id = $1
+       ORDER BY b.travel_date ASC, b.created_at DESC`,
+      [guideId]
+    );
+
+    // Categorize bookings by status
+    const bookings = bookingsResult.rows;
+    const upcoming = bookings.filter(b => 
+      b.status === 'confirmed' && new Date(b.travel_date) >= new Date()
+    );
+    const ongoing = bookings.filter(b => 
+      b.status === 'confirmed' && new Date(b.travel_date) < new Date()
+    );
+    const completed = bookings.filter(b => b.status === 'completed');
+    const cancelled = bookings.filter(b => b.status === 'cancelled');
+
+    res.json({
+      success: true,
+      count: bookings.length,
+      bookings: bookings,
+      categorized: {
+        upcoming: upcoming,
+        ongoing: ongoing,
+        completed: completed,
+        cancelled: cancelled,
+        counts: {
+          total: bookings.length,
+          upcoming: upcoming.length,
+          ongoing: ongoing.length,
+          completed: completed.length,
+          cancelled: cancelled.length
+        }
       }
     });
-
   } catch (err) {
-    console.error("❌ Upload error:", err);
-
-    res.status(500).json({
-      message: "Document upload failed"
+    console.error("❌ getGuideBookings error:", err);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch assigned bookings" 
     });
   }
 };
