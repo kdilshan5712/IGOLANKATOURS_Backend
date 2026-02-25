@@ -70,6 +70,40 @@ export const uploadReviewImages = multer({
   }
 });
 
+// Single image upload (for gallery)
+export const uploadSingleImage = multer({
+  storage,
+  limits: { 
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 1 // Maximum 1 image
+  },
+  fileFilter: (req, file, cb) => {
+    console.log("🔍 Gallery image filter check:", {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
+    });
+
+    const allowedImages = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp"
+    ];
+
+    if (!allowedImages.includes(file.mimetype)) {
+      console.error("❌ Invalid image type:", file.mimetype);
+      return cb(
+        new Error(`Invalid file type. Allowed: JPEG, PNG, WebP`), 
+        false
+      );
+    }
+    
+    console.log("✅ Image type accepted");
+    cb(null, true);
+  }
+});
+
 console.log("✅ Upload middleware configured");
 
 export default upload;

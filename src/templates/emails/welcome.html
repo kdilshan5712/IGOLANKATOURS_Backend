@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to I Go Lanka Tours</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .welcome-message {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .features {
+            margin: 20px 0;
+        }
+
+        .feature-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .feature-item:last-child {
+            border-bottom: none;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: #10b981;
+            color: #ffffff;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+
+        .footer {
+            background: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌴 Welcome to I Go Lanka Tours!</h1>
+        </div>
+        <div class="content">
+            <p>Dear {{userName}},</p>
+
+            <div class="welcome-message">
+                <p><strong>Thank you for joining I Go Lanka Tours!</strong></p>
+                <p>We're excited to help you explore the beautiful island of Sri Lanka.</p>
+            </div>
+
+            <h2>What's Next?</h2>
+            <div class="features">
+                <div class="feature-item">✅ Browse our curated tour packages</div>
+                <div class="feature-item">✅ Book your dream Sri Lankan adventure</div>
+                <div class="feature-item">✅ Get matched with expert local guides</div>
+                <div class="feature-item">✅ Manage your bookings easily</div>
+            </div>
+
+            <center>
+                <a href="{{loginLink}}" class="cta-button">Start Exploring</a>
+            </center>
+
+            <p>If you have any questions, our support team is here to help!</p>
+
+            <p>Best regards,<br><strong>I Go Lanka Tours Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 I Go Lanka Tours. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply to this message.</p>
+        </div>
+    </div>
+</body>
+
+</html>

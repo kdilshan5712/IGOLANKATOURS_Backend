@@ -7,7 +7,17 @@ import {
   uploadGuideDocuments,
   getGuideProfile,
   getGuideDashboard,
-  getGuideBookings
+  getGuideBookings,
+  uploadProfilePhoto,
+  deleteProfilePhoto,
+  updateGuideProfile,
+  getRejectionDetails,
+  resubmitApplication,
+  getGuideDashboardStats,
+  getAvailability,
+  setAvailability,
+  markTourCompleted,
+  getGuideReviews
 } from "../controllers/guide.controller.js";
 
 const router = express.Router();
@@ -32,6 +42,31 @@ router.get(
   getGuideProfile
 );
 
+// Update guide profile (authenticated guide only)
+router.put(
+  "/me",
+  authenticate,
+  authorize("guide"),
+  updateGuideProfile
+);
+
+// Upload profile photo (authenticated guide only)
+router.post(
+  "/profile-photo",
+  authenticate,
+  authorize("guide"),
+  upload.single("profile_photo"),
+  uploadProfilePhoto
+);
+
+// Delete profile photo (authenticated guide only)
+router.delete(
+  "/profile-photo",
+  authenticate,
+  authorize("guide"),
+  deleteProfilePhoto
+);
+
 // Guide dashboard (authenticated active guide only)
 router.get(
   "/dashboard",
@@ -40,7 +75,7 @@ router.get(
   getGuideDashboard
 );
 
-// Get assigned bookings (authenticated guide only)
+// Get guide bookings (authenticated guide only)
 router.get(
   "/bookings",
   authenticate,
@@ -48,12 +83,60 @@ router.get(
   getGuideBookings
 );
 
-// Alias for my-tours (same as bookings)
+// Get rejection details (authenticated rejected guide only)
 router.get(
-  "/my-tours",
+  "/rejection-details",
   authenticate,
   authorize("guide"),
-  getGuideBookings
+  getRejectionDetails
+);
+
+// Resubmit application (authenticated rejected guide only)
+router.post(
+  "/resubmit",
+  authenticate,
+  authorize("guide"),
+  resubmitApplication
+);
+
+// Get dashboard statistics (authenticated guide only)
+router.get(
+  "/dashboard/stats",
+  authenticate,
+  authorize("guide"),
+  getGuideDashboardStats
+);
+
+// Get guide availability (authenticated guide only)
+router.get(
+  "/availability",
+  authenticate,
+  authorize("guide"),
+  getAvailability
+);
+
+// Set guide availability (authenticated guide only)
+router.post(
+  "/availability",
+  authenticate,
+  authorize("guide"),
+  setAvailability
+);
+
+// Mark tour as completed (authenticated guide only)
+router.patch(
+  "/bookings/:id/complete",
+  authenticate,
+  authorize("guide"),
+  markTourCompleted
+);
+
+// Get guide reviews (authenticated guide only)
+router.get(
+  "/reviews",
+  authenticate,
+  authorize("guide"),
+  getGuideReviews
 );
 
 export default router;

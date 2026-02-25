@@ -8,7 +8,7 @@ if (!process.env.JWT_SECRET) {
 
 export const signToken = (payload) => {
   return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: "7d"
+    expiresIn: "2h" // Token expires in 2 hours for security
   });
 };
 

@@ -1,10 +1,11 @@
 import express from "express";
-import { 
-  getAllPackages, 
+import {
+  getAllPackages,
   getPackageById,
   getFeaturedPackages,
   getCategories,
-  getPackageStats
+  getPackageStats,
+  calculatePackagePrice
 } from "../controllers/package.controller.js";
 
 const router = express.Router();
@@ -29,6 +30,10 @@ router.get("/stats", getPackageStats);
 // Get all packages (with optional filters)
 // GET /api/packages?category=Beach&budget=luxury&min_price=500&max_price=2000
 router.get("/", getAllPackages);
+
+// Calculate price for a specific date and travelers
+// GET /api/packages/:id/price?date=2024-12-25&travelers=2
+router.get("/:id/price", calculatePackagePrice);
 
 // Get single package by ID (MUST be last to avoid route conflicts)
 // GET /api/packages/:id

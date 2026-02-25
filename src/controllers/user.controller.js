@@ -31,7 +31,7 @@ export const getUserProfile = async (req, res) => {
     }
 
     const profile = result.rows[0];
-    
+
     // Split full_name into first_name and last_name for frontend compatibility
     if (profile.full_name) {
       const nameParts = profile.full_name.split(' ');
@@ -102,70 +102,6 @@ export const getUserBookings = async (req, res) => {
     console.error("Error fetching bookings:", error);
     return res.status(500).json({
       message: "Failed to fetch bookings",
-      error: error.message
-    });
-  }
-};
-
-/**
- * CANCEL BOOKING
- * PUT /api/user/bookings/:bookingId/cancel
- * Auth: Required (Tourist only)
- */
-export const cancelBooking = async (req, res) => {
-  const { bookingId } = req.params;
-  const user_id = req.user.user_id;
-
-  try {
-    // Check if booking exists and belongs to user
-    const bookingCheck = await db.query(
-      `SELECT booking_id, travel_date, status 
-       FROM bookings 
-       WHERE booking_id = $1 AND user_id = $2`,
-      [bookingId, user_id]
-    );
-
-    if (bookingCheck.rows.length === 0) {
-      return res.status(404).json({
-        message: "Booking not found"
-      });
-    }
-
-    const booking = bookingCheck.rows[0];
-
-    // Check if already cancelled
-    if (booking.status === "cancelled") {
-      return res.status(400).json({
-        message: "Booking is already cancelled"
-      });
-    }
-
-    // Check if travel date is in the future
-    const travelDate = new Date(booking.travel_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (travelDate <= today) {
-      return res.status(400).json({
-        message: "Cannot cancel booking for past or current date"
-      });
-    }
-
-    // Update booking status to cancelled
-    await db.query(
-      `UPDATE bookings 
-       SET status = 'cancelled'
-       WHERE booking_id = $1`,
-      [bookingId]
-    );
-
-    return res.json({
-      message: "Booking cancelled successfully"
-    });
-  } catch (error) {
-    console.error("Error cancelling booking:", error);
-    return res.status(500).json({
-      message: "Failed to cancel booking",
       error: error.message
     });
   }

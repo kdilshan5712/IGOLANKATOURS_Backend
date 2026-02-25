@@ -29,7 +29,7 @@ export const registerTourist = async (req, res) => {
     } else {
       const normalizedEmail = email.trim().toLowerCase();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      
+
       if (!emailRegex.test(normalizedEmail)) {
         errors.email = "Invalid email format";
       } else if (normalizedEmail.length > 254) {
@@ -135,9 +135,9 @@ export const registerTourist = async (req, res) => {
     const passwordHash = await hashPassword(password);
 
     // Generate email verification token
-    const { token: verifyToken, hashedToken: hashedVerifyToken, expiresAt: verifyExpiresAt } = 
+    const { token: verifyToken, hashedToken: hashedVerifyToken, expiresAt: verifyExpiresAt } =
       generateEmailVerifyToken();
-    
+
     console.log("🔐 Generated verification token");
     console.log("   Plain token length:", verifyToken.length);
     console.log("   Hashed token length:", hashedVerifyToken.length);
@@ -176,22 +176,22 @@ export const registerTourist = async (req, res) => {
     // Generate verification link
     const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verifyToken}`;
 
-    // Send verification email (async, non-blocking)
-    const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
-    console.log("📧 Attempting to send verification email to:", normalizedEmail);
-    console.log("🔗 Verification link:", verificationLink);
-    
-    // Send email with proper await to ensure it's sent before responding
+    // Send verification email using new service
     try {
-      const emailSent = await sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
-      if (emailSent) {
-        console.log("✅ Verification email sent successfully to:", normalizedEmail);
-      } else {
-        console.warn("⚠️ Email sending indicated failure - email may not have been sent");
-      }
+      const { sendEmail } = await import("../utils/emailService.js");
+      // Create a simple HTML template for verification since we didn't create a specific one in emailService.js yet
+      // Or better, update emailService to support generic emails or add verification template
+      // For now, let's use the existing template mechanism if compatible, or direct send
+
+      const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
+      await sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
+
+      // Also send welcome email for new registration
+      const { sendWelcomeEmail } = await import("../utils/emailService.js");
+      await sendWelcomeEmail(normalizedEmail, full_name.trim());
+
     } catch (emailErr) {
       console.error("❌ Error sending email:", emailErr.message);
-      // Don't fail registration even if email fails to send
     }
 
     res.status(201).json({
@@ -327,22 +327,19 @@ export const login = async (req, res) => {
        ROLE-BASED STATUS RULES
        -------------------------------------------------- */
 
-    // Guide: must be approved (status = active)
+    // Guide: must be approved (status = active) OR allow rejected for resubmission
     if (user.role === "guide" && user.status === "pending") {
       return res.status(403).json({
         message: "Guide account pending admin approval. Please wait for verification."
       });
     }
 
-    // Handle rejected accounts
-    if (user.status === "rejected") {
-      return res.status(403).json({
-        message: "Account has been rejected. Please contact support."
-      });
-    }
+    // Allow rejected guides to login (for document resubmission)
+    // but flag them so frontend can redirect to resubmission page
+    const isRejected = user.status === "rejected";
 
-    // Any role must be active
-    if (user.status !== "active") {
+    // Block other non-active statuses (except rejected guides)
+    if (user.status !== "active" && !isRejected) {
       return res.status(403).json({
         message: "Account is not active"
       });
@@ -389,11 +386,14 @@ export const login = async (req, res) => {
         id: user.user_id,
         email: user.email,
         role: user.role,
+        status: user.status,
         email_verified: user.email_verified,
         full_name: profile?.full_name || "User",
         name: profile?.full_name || "User",
         country: profile?.country || null,
-        phone: profile?.phone || profile?.contact_number || null
+        phone: profile?.phone || profile?.contact_number || null,
+        isRejected: isRejected, // Flag for frontend to handle
+        canResubmit: isRejected // Allow resubmission for rejected guides
       }
     });
 
@@ -416,9 +416,9 @@ export const verifyEmail = async (req, res) => {
     console.log("🔍 Verify email request - Token:", token ? "provided" : "missing");
 
     if (!token) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: "Verification token required",
-        success: false 
+        success: false
       });
     }
 
@@ -442,8 +442,8 @@ export const verifyEmail = async (req, res) => {
         `SELECT COUNT(*) as count FROM users WHERE email_verified = false`
       );
       console.log("🐛 Debug - Unverified users in DB:", debugResult.rows[0].count);
-      
-      return res.status(400).json({ 
+
+      return res.status(400).json({
         message: "Invalid or expired verification token",
         success: false
       });
@@ -454,7 +454,7 @@ export const verifyEmail = async (req, res) => {
 
     // Check if already verified
     if (user.email_verified) {
-      return res.status(200).json({ 
+      return res.status(200).json({
         message: "Email already verified",
         success: true,
         verified: true
@@ -463,7 +463,7 @@ export const verifyEmail = async (req, res) => {
 
     // Check expiry
     if (isTokenExpired(user.email_verify_expires)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: "Verification token expired. Please request a new one.",
         success: false
       });
@@ -489,7 +489,7 @@ export const verifyEmail = async (req, res) => {
 
   } catch (err) {
     console.error("Email verification error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Email verification failed",
       success: false
     });
@@ -528,18 +528,18 @@ export const resendVerification = async (req, res) => {
 
     // Check if already verified
     if (user.email_verified) {
-      return res.status(400).json({ 
-        message: "Email already verified" 
+      return res.status(400).json({
+        message: "Email already verified"
       });
     }
 
     // Check cooldown
     if (!canResendEmail(user.last_verification_email_sent, TOKEN_CONFIG.RESEND_COOLDOWN_MINUTES)) {
       const remainingSeconds = getRemainingCooldown(
-        user.last_verification_email_sent, 
+        user.last_verification_email_sent,
         TOKEN_CONFIG.RESEND_COOLDOWN_MINUTES
       );
-      return res.status(429).json({ 
+      return res.status(429).json({
         message: `Please wait ${remainingSeconds} seconds before requesting another email`,
         remainingSeconds
       });
@@ -578,10 +578,10 @@ export const resendVerification = async (req, res) => {
 
     // Send email
     const verificationEmail = emailTemplates.emailVerification(
-      user.full_name || 'User', 
+      user.full_name || 'User',
       verificationLink
     );
-    
+
     sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html)
       .catch(err => console.error("Email send failed:", err));
 
@@ -623,8 +623,8 @@ export const forgotPassword = async (req, res) => {
 
     // Always return success to prevent email enumeration
     if (result.rows.length === 0) {
-      return res.json({ 
-        message: "If that email exists, a password reset link has been sent." 
+      return res.json({
+        message: "If that email exists, a password reset link has been sent."
       });
     }
 
@@ -633,17 +633,17 @@ export const forgotPassword = async (req, res) => {
     // Check cooldown
     if (!canResendEmail(user.last_reset_email_sent, TOKEN_CONFIG.RESEND_COOLDOWN_MINUTES)) {
       const remainingSeconds = getRemainingCooldown(
-        user.last_reset_email_sent, 
+        user.last_reset_email_sent,
         TOKEN_CONFIG.RESEND_COOLDOWN_MINUTES
       );
-      return res.status(429).json({ 
+      return res.status(429).json({
         message: `Please wait ${remainingSeconds} seconds before requesting another reset email`,
         remainingSeconds
       });
     }
 
     // Generate reset token
-    const { token: resetToken, hashedToken: hashedResetToken, expiresAt: resetExpiresAt } = 
+    const { token: resetToken, hashedToken: hashedResetToken, expiresAt: resetExpiresAt } =
       generatePasswordResetToken();
 
     // Update user with reset token
@@ -659,10 +659,13 @@ export const forgotPassword = async (req, res) => {
     // Generate reset link
     const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5174'}/reset-password?token=${resetToken}`;
 
-    // Send email
-    const resetEmail = emailTemplates.passwordReset(user.full_name, resetLink);
-    sendEmail(normalizedEmail, resetEmail.subject, resetEmail.html)
-      .catch(err => console.error("Password reset email send failed:", err));
+    // Send email using new service
+    try {
+      const { sendPasswordReset } = await import("../utils/emailService.js");
+      await sendPasswordReset(normalizedEmail, resetToken, user.full_name);
+    } catch (emailErr) {
+      console.error("Password reset email send failed:", emailErr);
+    }
 
     console.log(`🔐 Password reset requested for: ${user.email}`);
 
@@ -726,8 +729,8 @@ export const resetPassword = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(400).json({ 
-        message: "Invalid or expired reset token" 
+      return res.status(400).json({
+        message: "Invalid or expired reset token"
       });
     }
 
@@ -735,8 +738,8 @@ export const resetPassword = async (req, res) => {
 
     // Check expiry
     if (isTokenExpired(user.reset_password_expires)) {
-      return res.status(400).json({ 
-        message: "Reset token has expired. Please request a new one." 
+      return res.status(400).json({
+        message: "Reset token has expired. Please request a new one."
       });
     }
 

@@ -1,8 +1,10 @@
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
-import { 
-  createBooking, 
-  getMyBookings
+import {
+  createBooking,
+  getMyBookings,
+  cancelBooking,
+  downloadInvoice
 } from "../controllers/booking.controller.js";
 
 const router = express.Router();
@@ -25,6 +27,22 @@ router.get(
   authenticate,
   authorize("tourist"),
   getMyBookings
+);
+
+// Cancel booking (tourist only - must own the booking)
+router.post(
+  "/:id/cancel",
+  authenticate,
+  authorize("tourist"),
+  cancelBooking
+);
+
+// Download invoice (tourist only - must own the booking)
+router.get(
+  "/:id/invoice",
+  authenticate,
+  authorize("tourist"),
+  downloadInvoice
 );
 
 export default router;

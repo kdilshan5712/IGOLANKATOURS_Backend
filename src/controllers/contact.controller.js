@@ -302,6 +302,71 @@ export const updateContactMessage = async (req, res) => {
 };
 
 /**
+ * 4.5️⃣ ADMIN: REPLY TO CONTACT MESSAGE
+ * POST /api/admin/contacts/:messageId/reply
+ * Body: { message }
+ */
+export const replyContactMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { message } = req.body;
+    const adminId = req.user.user_id;
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Reply message is required" });
+    }
+
+    // Check if message exists
+    const messageCheck = await db.query(
+      'SELECT * FROM contact_messages WHERE message_id = $1',
+      [messageId]
+    );
+
+    if (messageCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Message not found" });
+    }
+
+    const contactData = messageCheck.rows[0];
+
+    // Send the email reply
+    const emailTemplate = emailTemplates.contactReply(contactData.name, message, contactData.subject);
+    const emailSent = await sendEmail(contactData.email, emailTemplate.subject, emailTemplate.html);
+
+    if (!emailSent) {
+      return res.status(500).json({ success: false, message: "Failed to send email reply" });
+    }
+
+    // Update message status to "responded" and append note
+    const updateQuery = `
+      UPDATE contact_messages 
+      SET 
+        status = 'responded',
+        notes = CONCAT(COALESCE(notes, ''), '\n[Admin Reply Sent]: ', $1::text),
+        read_by = COALESCE(read_by, $2),
+        read_at = COALESCE(read_at, NOW())
+      WHERE message_id = $3
+      RETURNING *
+    `;
+
+    const result = await db.query(updateQuery, [message, adminId, messageId]);
+
+    res.json({
+      success: true,
+      message: "Reply sent successfully",
+      contactMessage: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("replyContactMessage error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send contact reply",
+      error: err.message
+    });
+  }
+};
+
+/**
  * 5️⃣ ADMIN: DELETE CONTACT MESSAGE
  * DELETE /api/admin/contacts/:messageId
  */

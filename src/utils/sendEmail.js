@@ -449,7 +449,9 @@ export const emailTemplates = {
           .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
           .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 5px; }
           .reason-box { background: white; padding: 20px; margin: 20px 0; border: 2px solid #ff6b6b; border-radius: 8px; }
+          .resubmit-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 20px; margin: 20px 0; border-radius: 5px; }
           .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          .btn { display: inline-block; padding: 12px 24px; background: #4caf50; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }
         </style>
       </head>
       <body>
@@ -468,23 +470,40 @@ export const emailTemplates = {
             
             ${reason ? `
             <div class="reason-box">
-              <h3>📝 Reason:</h3>
+              <h3>📝 Reason for Rejection:</h3>
               <p>${reason}</p>
             </div>
             ` : ''}
             
-            <h3>What you can do:</h3>
+            <div class="resubmit-box">
+              <h3>🔄 Want to Resubmit?</h3>
+              <p>You can log in to your account and upload corrected documents:</p>
+              <ol>
+                <li>Log in at: <a href="${process.env.FRONTEND_URL || 'http://localhost:5174'}/login">IGOLANKA Tours Login</a></li>
+                <li>View your rejection reason</li>
+                <li>Upload corrected documents</li>
+                <li>Resubmit for review</li>
+              </ol>
+              <p style="text-align: center;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5174'}/login" class="btn">
+                  Log In to Resubmit
+                </a>
+              </p>
+            </div>
+
+            <h3>What happens next?</h3>
             <ul>
-              <li>Review the requirements for tour guide registration</li>
-              <li>Ensure all documents are valid and clearly visible</li>
-              <li>Contact our support team for clarification</li>
-              <li>Re-apply once you've addressed the issues</li>
+              <li>Your account remains active for resubmission</li>
+              <li>You can upload corrected documents anytime</li>
+              <li>Our team will review your resubmission within 2-3 business days</li>
+              <li>You'll receive an email once reviewed</li>
             </ul>
             
-            <p>We appreciate your understanding and encourage you to reach out if you have any questions.</p>
+            <p>If you have questions or need clarification, please contact our support team.</p>
             
             <div class="footer">
-              <p>Questions? Email us at support@igolankatours.com</p>
+              <p><strong>I GO LANKA TOURS Support Team</strong></p>
+              <p>Email: support@igolankatours.com | Phone: +94 XX XXX XXXX</p>
               <p>&copy; ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.</p>
             </div>
           </div>
@@ -664,6 +683,98 @@ export const emailTemplates = {
   }),
 
   /**
+   * Custom Tour Quote - Admin reply to custom tour request
+   */
+  customTourQuote: (name, messageContent) => ({
+    subject: "Your Custom Tour Quote - I GO LANKA TOURS 🌴",
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .message-box { background: white; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 5px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          .btn { display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🌴 Your Custom Tour Quote</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${name},</h2>
+            
+            <p>Thank you for requesting a custom tour with I GO LANKA TOURS! Our experts have reviewed your request and generated a tailored response for you.</p>
+            
+            <div class="message-box">
+              ${messageContent.replace(/\n/g, '<br>')}
+            </div>
+            
+            <p>If you have any questions or wish to proceed with this booking, simply reply to this email or contact us through our website.</p>
+            
+            <div class="footer">
+              <p>Looking forward to planning your dream vacation!</p>
+              <p>&copy; ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  /**
+   * Contact Reply - Admin reply to general contact message
+   */
+  contactReply: (name, messageContent, originalSubject) => ({
+    subject: `Re: ${originalSubject} - I GO LANKA TOURS`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .message-box { background: white; border-left: 4px solid #4f46e5; padding: 20px; margin: 20px 0; border-radius: 5px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Support Reply</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${name},</h2>
+            
+            <p>Thank you for reaching out to us. We have reviewed your inquiry and have an update for you:</p>
+            
+            <div class="message-box">
+              ${messageContent.replace(/\n/g, '<br>')}
+            </div>
+            
+            <p>If you need further assistance, please reply directly to this email.</p>
+            
+            <div class="footer">
+              <p>Best regards,</p>
+              <p><strong>I GO LANKA TOURS Support Team</strong></p>
+              <p>&copy; ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  /**
    * Contact Form Confirmation - Confirmation email to submitter
    */
   contactConfirmation: (name) => ({
@@ -783,5 +894,182 @@ export const emailTemplates = {
       </body>
       </html>
     `
-  })
+  }),
+
+  /**
+   * Guide Assignment - Notification to guide
+   */
+  guideAssignment: (guideName, touristName, packageName, startDate, endDate, adminNotes) => {
+    // Safely format dates with multiple fallbacks
+    let startDateStr = 'TBD';
+    let endDateStr = 'TBD';
+    let durationStr = 'TBD';
+    let assignmentDateStr = 'Now';
+
+    try {
+      // Ensure we have valid Date objects
+      let start = null;
+      let end = null;
+
+      // Parse startDate
+      if (startDate) {
+        try {
+          start = new Date(startDate);
+          if (isNaN(start.getTime())) {
+            start = null;
+          }
+        } catch (e) {
+          console.warn('[EMAIL] Invalid startDate:', startDate, e.message);
+        }
+      }
+
+      // Parse endDate
+      if (endDate) {
+        try {
+          end = new Date(endDate);
+          if (isNaN(end.getTime())) {
+            end = null;
+          }
+        } catch (e) {
+          console.warn('[EMAIL] Invalid endDate:', endDate, e.message);
+        }
+      }
+
+      // Format dates only if valid
+      if (start && !isNaN(start.getTime())) {
+        try {
+          startDateStr = start.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (e) {
+          console.warn('[EMAIL] Error formatting startDate:', e.message);
+        }
+      }
+
+      if (end && !isNaN(end.getTime())) {
+        try {
+          endDateStr = end.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (e) {
+          console.warn('[EMAIL] Error formatting endDate:', e.message);
+        }
+      }
+
+      // Calculate duration
+      if (start && end && !isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        try {
+          const durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+          if (durationDays > 0) {
+            durationStr = `${durationDays} days`;
+          }
+        } catch (e) {
+          console.warn('[EMAIL] Error calculating duration:', e.message);
+        }
+      }
+
+      // Format assignment date
+      try {
+        const now = new Date();
+        assignmentDateStr = now.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        console.warn('[EMAIL] Error formatting assignment date:', e.message);
+      }
+
+    } catch (e) {
+      console.warn('[EMAIL] Unexpected error in date formatting:', e.message);
+      // All dates stay as TBD/Now already set above
+    }
+
+    return {
+      subject: `🎯 New Tour Assignment: ${packageName}`,
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .info-box { background: white; border: 2px solid #7c3aed; padding: 20px; margin: 20px 0; border-radius: 8px; }
+          .detail-row { margin: 15px 0; padding: 10px 0; border-bottom: 1px solid #eee; }
+          .detail-row:last-child { border-bottom: none; }
+          .label { font-weight: bold; color: #7c3aed; display: inline-block; width: 140px; }
+          .notes-box { background: #fef3c7; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #f59e0b; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          .action-box { background: #ede9fe; padding: 20px; margin: 20px 0; text-align: center; border-radius: 8px; }
+          .btn { display: inline-block; background: #7c3aed; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+          .highlight { background: #fef3c7; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎯 New Tour Assignment!</h1>
+            <p>You have been assigned to guide a new tour</p>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${guideName}</strong>,</p>
+            
+            <p>Great news! You have been assigned to guide a new tour. Please review the details below and prepare accordingly.</p>
+            
+            <div class="info-box">
+              <h3 style="color: #7c3aed; margin-top: 0;">📋 Tour Details</h3>
+              <div class="detail-row">
+                <span class="label">Package:</span> <span class="highlight">${packageName || 'Not specified'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Tourist Name:</span> ${touristName || 'Not specified'}
+              </div>
+              <div class="detail-row">
+                <span class="label">Start Date:</span> ${startDateStr}
+              </div>
+              <div class="detail-row">
+                <span class="label">End Date:</span> ${endDateStr}
+              </div>
+              <div class="detail-row">
+                <span class="label">Duration:</span> ${durationStr}
+              </div>
+              <div class="detail-row">
+                <span class="label">Assignment Date:</span> ${assignmentDateStr}
+              </div>
+            </div>
+            
+            ${adminNotes ? `
+            <div class="notes-box">
+              <h3 style="color: #f59e0b; margin-top: 0;">📝 Admin Notes & Instructions</h3>
+              <p>${adminNotes.replace(/\n/g, '<br>')}</p>
+            </div>
+            ` : ''}
+            
+            <div class="action-box">
+              <p><strong>Next Steps:</strong></p>
+              <ul style="text-align: left; display: inline-block;">
+                <li>Review the complete tour details in your dashboard</li>
+                <li>Check tourist contact information and special requests</li>
+                <li>Prepare your itinerary and materials</li>
+                <li>Contact the tourist if you have any questions</li>
+              </ul>
+              <br>
+              <a href="${process.env.FRONTEND_URL || 'https://igolankatours.com'}/guide/bookings" class="btn">View Tour Details</a>
+            </div>
+            
+            <p style="background: #e0e7ff; padding: 15px; border-radius: 8px; border-left: 4px solid #7c3aed;">
+              <strong>💡 Reminder:</strong> Please ensure you're well-prepared and arrive on time. Contact the admin if you need any assistance or have concerns about this assignment.
+            </p>
+            
+            <div class="footer">
+              <p>This assignment was made by the I GO LANKA TOURS admin team</p>
+              <p>&copy; ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+    };
+  }
 };

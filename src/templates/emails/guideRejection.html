@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide Application Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .rejection-message {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .reason-box {
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .footer {
+            background: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Application Update</h1>
+        </div>
+        <div class="content">
+            <p>Dear {{guideName}},</p>
+
+            <div class="rejection-message">
+                <p>Thank you for your interest in becoming a tour guide with I Go Lanka Tours.</p>
+                <p>After careful review, we regret to inform you that we are unable to approve your application at this
+                    time.</p>
+            </div>
+
+            <div class="reason-box">
+                <strong>Reason:</strong>
+                <p>{{rejectionReason}}</p>
+            </div>
+
+            <p>We appreciate your interest and encourage you to reapply in the future if circumstances change.</p>
+
+            <p>If you have any questions about this decision, please don't hesitate to contact our support team.</p>
+
+            <p>Best regards,<br><strong>I Go Lanka Tours Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 I Go Lanka Tours. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply to this message.</p>
+        </div>
+    </div>
+</body>
+
+</html>

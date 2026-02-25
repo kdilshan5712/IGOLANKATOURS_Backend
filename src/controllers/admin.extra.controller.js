@@ -30,9 +30,9 @@ export const getDashboardStats = async (req, res) => {
     });
   } catch (err) {
     console.error("getDashboardStats error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch dashboard stats" 
+      message: "Failed to fetch dashboard stats"
     });
   }
 };
@@ -43,7 +43,7 @@ export const getDashboardStats = async (req, res) => {
 export const getRecentBookings = async (req, res) => {
   try {
     const limit = req.query.limit || 10;
-    
+
     const result = await db.query(`
       SELECT 
         b.booking_id,
@@ -68,9 +68,9 @@ export const getRecentBookings = async (req, res) => {
     });
   } catch (err) {
     console.error("getRecentBookings error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch recent bookings" 
+      message: "Failed to fetch recent bookings"
     });
   }
 };
@@ -83,6 +83,7 @@ export const getAllPackages = async (req, res) => {
     const result = await db.query(`
       SELECT 
         p.*,
+        p.base_price as price,
         COUNT(DISTINCT b.booking_id) as booking_count,
         COUNT(DISTINCT r.review_id) as review_count,
         COALESCE(AVG(r.rating), 0) as avg_rating
@@ -100,9 +101,9 @@ export const getAllPackages = async (req, res) => {
     });
   } catch (err) {
     console.error("getAllPackages error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch packages" 
+      message: "Failed to fetch packages"
     });
   }
 };
@@ -118,14 +119,16 @@ export const createPackage = async (req, res) => {
       budget,
       hotel,
       rating,
-      image
+      image,
+      season_type = 'year_round',
+      coast_type = 'mixed'
     } = req.body;
 
     const result = await db.query(`
-      INSERT INTO tour_packages (name, description, price, duration, category, budget, hotel, rating, image)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *
-    `, [name, description, price, duration, category, budget, hotel, rating || 0, image]);
+      INSERT INTO tour_packages (name, description, base_price, duration, category, budget, hotel, rating, image, season_type, coast_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *, base_price as price
+    `, [name, description, price, duration, category, budget, hotel, rating || 0, image, season_type, coast_type]);
 
     res.status(201).json({
       success: true,
@@ -134,9 +137,9 @@ export const createPackage = async (req, res) => {
     });
   } catch (err) {
     console.error("createPackage error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to create package" 
+      message: "Failed to create package"
     });
   }
 };
@@ -144,30 +147,69 @@ export const createPackage = async (req, res) => {
 export const updatePackage = async (req, res) => {
   try {
     const { packageId } = req.params;
-    const {
-      name,
-      description,
-      price,
-      duration,
-      category,
-      budget,
-      hotel,
-      rating,
-      image
-    } = req.body;
+    const updates = req.body;
 
-    const result = await db.query(`
+    // Allowed fields for update
+    const allowedFields = [
+      'name', 'description', 'base_price', 'price',
+      'duration', 'category', 'budget', 'hotel', 'rating', 'image',
+      'season_type', 'coast_type', 'is_active', 'highlights',
+      'includes', 'excludes', 'full_description', 'itinerary', 'images'
+    ];
+
+    // Filter out unwanted fields and map 'price' to 'base_price'
+    const cleanUpdates = {};
+    for (const key of Object.keys(updates)) {
+      if (allowedFields.includes(key)) {
+        if (key === 'price') {
+          cleanUpdates['base_price'] = updates[key];
+        } else if (key === 'notIncluded') { // Handle frontend alias if sent
+          cleanUpdates['excludes'] = updates[key];
+        } else if (key === 'included') {
+          cleanUpdates['includes'] = updates[key];
+        } else if (key === 'fullDescription') {
+          cleanUpdates['full_description'] = updates[key];
+        } else {
+          cleanUpdates[key] = updates[key];
+        }
+      }
+    }
+
+    if (Object.keys(cleanUpdates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields to update"
+      });
+    }
+
+    // Dynamic SQL Generation
+    const setClause = [];
+    const values = [];
+    let paramIndex = 1;
+
+    for (const [key, value] of Object.entries(cleanUpdates)) {
+      setClause.push(`${key} = $${paramIndex}`);
+      values.push(value);
+      paramIndex++;
+    }
+
+    // Add updated_at
+    setClause.push(`updated_at = NOW()`);
+
+    const query = `
       UPDATE tour_packages
-      SET name = $1, description = $2, price = $3, duration = $4, category = $5,
-          budget = $6, hotel = $7, rating = $8, image = $9, updated_at = NOW()
-      WHERE package_id = $10
-      RETURNING *
-    `, [name, description, price, duration, category, budget, hotel, rating || 0, image, packageId]);
+      SET ${setClause.join(', ')}
+      WHERE package_id = $${paramIndex}
+      RETURNING *, base_price as price
+    `;
+    values.push(packageId);
+
+    const result = await db.query(query, values);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Package not found" 
+        message: "Package not found"
       });
     }
 
@@ -178,9 +220,9 @@ export const updatePackage = async (req, res) => {
     });
   } catch (err) {
     console.error("updatePackage error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to update package" 
+      message: "Failed to update package"
     });
   }
 };
@@ -194,9 +236,9 @@ export const deletePackage = async (req, res) => {
     `, [packageId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Package not found" 
+        message: "Package not found"
       });
     }
 
@@ -206,9 +248,9 @@ export const deletePackage = async (req, res) => {
     });
   } catch (err) {
     console.error("deletePackage error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to delete package" 
+      message: "Failed to delete package"
     });
   }
 };
@@ -246,9 +288,9 @@ export const getAllBookings = async (req, res) => {
     });
   } catch (err) {
     console.error("getAllBookings error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch bookings" 
+      message: "Failed to fetch bookings"
     });
   }
 };
@@ -266,9 +308,9 @@ export const updateBookingStatus = async (req, res) => {
     `, [status, bookingId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Booking not found" 
+        message: "Booking not found"
       });
     }
 
@@ -279,9 +321,9 @@ export const updateBookingStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("updateBookingStatus error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to update booking status" 
+      message: "Failed to update booking status"
     });
   }
 };
@@ -309,9 +351,9 @@ export const getAllReviews = async (req, res) => {
     });
   } catch (err) {
     console.error("getAllReviews error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch reviews" 
+      message: "Failed to fetch reviews"
     });
   }
 };
@@ -329,9 +371,9 @@ export const approveReview = async (req, res) => {
     `, [reviewId, adminId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Review not found" 
+        message: "Review not found"
       });
     }
 
@@ -342,9 +384,9 @@ export const approveReview = async (req, res) => {
     });
   } catch (err) {
     console.error("approveReview error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to approve review" 
+      message: "Failed to approve review"
     });
   }
 };
@@ -362,9 +404,9 @@ export const rejectReview = async (req, res) => {
     `, [reviewId, adminId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Review not found" 
+        message: "Review not found"
       });
     }
 
@@ -375,9 +417,9 @@ export const rejectReview = async (req, res) => {
     });
   } catch (err) {
     console.error("rejectReview error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to reject review" 
+      message: "Failed to reject review"
     });
   }
 };
@@ -423,9 +465,9 @@ export const getAllUsers = async (req, res) => {
     });
   } catch (err) {
     console.error("getAllUsers error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch users" 
+      message: "Failed to fetch users"
     });
   }
 };
@@ -443,9 +485,9 @@ export const updateUserStatus = async (req, res) => {
     `, [status, userId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "User not found" 
+        message: "User not found"
       });
     }
 
@@ -455,9 +497,9 @@ export const updateUserStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("updateUserStatus error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to update user status" 
+      message: "Failed to update user status"
     });
   }
 };
@@ -478,9 +520,9 @@ export const markMessageAsRead = async (req, res) => {
     `, [messageId, adminId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Message not found" 
+        message: "Message not found"
       });
     }
 
@@ -491,9 +533,9 @@ export const markMessageAsRead = async (req, res) => {
     });
   } catch (err) {
     console.error("markMessageAsRead error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to mark message as read" 
+      message: "Failed to mark message as read"
     });
   }
 };
@@ -526,9 +568,9 @@ export const getCustomTourRequests = async (req, res) => {
     });
   } catch (err) {
     console.error("getCustomTourRequests error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch custom tour requests" 
+      message: "Failed to fetch custom tour requests"
     });
   }
 };
@@ -546,9 +588,9 @@ export const updateCustomTourStatus = async (req, res) => {
     `, [recommendations, requestId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Request not found" 
+        message: "Request not found"
       });
     }
 
@@ -559,187 +601,59 @@ export const updateCustomTourStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("updateCustomTourStatus error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to update custom tour request" 
+      message: "Failed to update custom tour request"
     });
   }
 };
 
-/* ======================================================
-   GUIDE ASSIGNMENT TO BOOKINGS
-   ====================================================== */
-
-/**
- * GET AVAILABLE GUIDES
- * Returns only approved and active guides for assignment
- */
-export const getAvailableGuides = async (req, res) => {
+export const replyCustomTourRequest = async (req, res) => {
   try {
+    const { requestId } = req.params;
+    const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Message content is required" });
+    }
+
+    // Fetch the request details
     const result = await db.query(`
       SELECT 
-        tg.guide_id,
-        tg.full_name,
-        tg.contact_number,
+        cs.*,
         u.email,
-        tg.languages,
-        tg.experience_years
-      FROM tour_guide tg
-      JOIN users u ON tg.user_id = u.user_id
-      WHERE u.role = 'guide'
-        AND u.status = 'active'
-        AND tg.approved = true
-      ORDER BY tg.full_name ASC
-    `);
+        t.full_name
+      FROM chatbot_session cs
+      JOIN tourist t ON cs.tourist_id = t.tourist_id
+      JOIN users u ON t.user_id = u.user_id
+      WHERE cs.session_id = $1
+    `, [requestId]);
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    const requestData = result.rows[0];
+
+    // Send the email quote
+    const emailTemplate = emailTemplates.customTourQuote(requestData.full_name, message);
+    const emailSent = await sendEmail(requestData.email, emailTemplate.subject, emailTemplate.html);
+
+    if (!emailSent) {
+      return res.status(500).json({ success: false, message: "Failed to send email reply" });
+    }
+
+    // Update the database status to indicate it was quoted
     res.json({
       success: true,
-      count: result.rows.length,
-      guides: result.rows
+      message: "Quote sent successfully"
     });
-  } catch (err) {
-    console.error("getAvailableGuides error:", err);
-    res.status(500).json({ 
-      success: false,
-      message: "Failed to fetch available guides" 
-    });
-  }
-};
-
-/**
- * ASSIGN GUIDE TO BOOKING
- * Admin assigns a guide to a specific booking
- */
-export const assignGuideToBooking = async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const { guideId, adminNotes } = req.body;
-    const adminUserId = req.user.user_id; // From auth middleware
-
-    // Validate inputs
-    if (!guideId) {
-      return res.status(400).json({
-        success: false,
-        message: "Guide ID is required"
-      });
-    }
-
-    // Verify booking exists and is eligible for assignment
-    const bookingCheck = await db.query(
-      `SELECT booking_id, status, assigned_guide_id FROM bookings WHERE booking_id = $1`,
-      [bookingId]
-    );
-
-    if (bookingCheck.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found"
-      });
-    }
-
-    const booking = bookingCheck.rows[0];
-
-    // Check if booking is already assigned
-    if (booking.assigned_guide_id) {
-      return res.status(400).json({
-        success: false,
-        message: "Booking already has an assigned guide. Please unassign first."
-      });
-    }
-
-    // Only allow assignment for confirmed bookings
-    if (booking.status !== 'confirmed') {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot assign guide to ${booking.status} booking. Only confirmed bookings can be assigned.`
-      });
-    }
-
-    // Verify guide exists and is approved
-    const guideCheck = await db.query(`
-      SELECT tg.guide_id, tg.full_name, u.status, tg.approved, tg.status as guide_status
-      FROM tour_guides tg
-      JOIN users u ON tg.user_id = u.user_id
-      WHERE tg.guide_id = $1
-        AND u.role = 'guide'
-        AND tg.approved = true
-        AND tg.status = 'approved'
-    `, [guideId]);
-
-    if (guideCheck.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Guide not found or not approved"
-      });
-    }
-
-    const guide = guideCheck.rows[0];
-
-    // Begin transaction
-    await db.query('BEGIN');
-
-    try {
-      // Assign guide to booking using new column names
-      const result = await db.query(`
-        UPDATE bookings
-        SET assigned_guide_id = $1,
-            guide_assigned_at = CURRENT_TIMESTAMP,
-            assigned_by_admin_id = $2
-        WHERE booking_id = $3
-        RETURNING *
-      `, [guideId, adminUserId, bookingId]);
-
-      // Create audit trail entry
-      await db.query(`
-        INSERT INTO guide_assignments 
-          (booking_id, guide_id, assigned_by, assignment_status, admin_notes)
-        VALUES ($1, $2, $3, 'active', $4)
-      `, [bookingId, guideId, adminUserId, adminNotes || null]);
-
-      // Commit transaction
-      await db.query('COMMIT');
-
-      // Fetch complete booking info with guide details
-      const updatedBooking = await db.query(`
-        SELECT 
-          b.*,
-          p.name as package_name,
-          p.duration,
-          p.category,
-          t.full_name as tourist_name,
-          t.phone as tourist_phone,
-          u.email as user_email,
-          tg.full_name as guide_name,
-          tg.contact_number as guide_phone,
-          ug.email as guide_email
-        FROM bookings b
-        JOIN tour_packages p ON b.package_id = p.package_id
-        JOIN users u ON b.user_id = u.user_id
-        LEFT JOIN tourist t ON u.user_id = t.user_id
-        LEFT JOIN tour_guides tg ON b.assigned_guide_id = tg.guide_id
-        LEFT JOIN users ug ON tg.user_id = ug.user_id
-        WHERE b.booking_id = $1
-      `, [bookingId]);
-
-      res.json({
-        success: true,
-        message: `Guide ${guide.full_name} assigned successfully`,
-        booking: updatedBooking.rows[0]
-      });
-
-      // TODO: Send notification/email to guide about new assignment
-      // This would be implemented in a separate notification service
-
-    } catch (txError) {
-      await db.query('ROLLBACK');
-      throw txError;
-    }
 
   } catch (err) {
-    console.error("assignGuideToBooking error:", err);
-    res.status(500).json({ 
+    console.error("replyCustomTourRequest error:", err);
+    res.status(500).json({
       success: false,
-      message: "Failed to assign guide to booking" 
+      message: "Failed to send custom tour reply"
     });
   }
 };

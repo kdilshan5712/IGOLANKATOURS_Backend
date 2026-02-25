@@ -7,5 +7,7 @@ const router = express.Router();
 
 router.get('/', authenticate, authorize('admin'), adminDashboardController.getDashboardMetrics);
 router.get('/recent-bookings', authenticate, authorize('admin'), adminDashboardController.getRecentBookings);
+router.get('/revenue-report', authenticate, authorize('admin'), adminDashboardController.getRevenueReport);
+router.get('/generate-report', authenticate, authorize('admin'), adminDashboardController.generateReport);
 
 export default router;

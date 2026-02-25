@@ -20,7 +20,7 @@ export const authenticate = (req, res, next) => {
 
   try {
     const token = authHeader.split(" ")[1];
-    
+
     if (!token) {
       return res.status(401).json({
         message: "Token is missing"
@@ -88,11 +88,19 @@ export const authorize = (...allowedRoles) => {
     }
 
     try {
-      // Verify role in database matches JWT and profile exists
-      const userResult = await db.query(
-        `SELECT role, status FROM users WHERE user_id = $1`,
-        [req.user.user_id]
+      // Add timeout for database query
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database timeout')), 5000)
       );
+
+      // Verify role in database matches JWT and profile exists
+      const userResult = await Promise.race([
+        db.query(
+          `SELECT role, status FROM users WHERE user_id = $1`,
+          [req.user.user_id]
+        ),
+        timeoutPromise
+      ]);
 
       if (userResult.rows.length === 0) {
         return res.status(403).json({
@@ -120,22 +128,31 @@ export const authorize = (...allowedRoles) => {
       let profileExists = false;
 
       if (req.user.role === "tourist") {
-        const profileCheck = await db.query(
-          `SELECT user_id FROM tourist WHERE user_id = $1`,
-          [req.user.user_id]
-        );
+        const profileCheck = await Promise.race([
+          db.query(
+            `SELECT user_id FROM tourist WHERE user_id = $1`,
+            [req.user.user_id]
+          ),
+          timeoutPromise
+        ]);
         profileExists = profileCheck.rows.length > 0;
       } else if (req.user.role === "guide") {
-        const profileCheck = await db.query(
-          `SELECT user_id FROM tour_guide WHERE user_id = $1`,
-          [req.user.user_id]
-        );
+        const profileCheck = await Promise.race([
+          db.query(
+            `SELECT user_id FROM tour_guide WHERE user_id = $1`,
+            [req.user.user_id]
+          ),
+          timeoutPromise
+        ]);
         profileExists = profileCheck.rows.length > 0;
       } else if (req.user.role === "admin") {
-        const profileCheck = await db.query(
-          `SELECT user_id FROM admin WHERE user_id = $1`,
-          [req.user.user_id]
-        );
+        const profileCheck = await Promise.race([
+          db.query(
+            `SELECT user_id FROM admin WHERE user_id = $1`,
+            [req.user.user_id]
+          ),
+          timeoutPromise
+        ]);
         profileExists = profileCheck.rows.length > 0;
       }
 
@@ -147,9 +164,19 @@ export const authorize = (...allowedRoles) => {
 
       next();
     } catch (err) {
-      console.error("Authorization error:", err);
+      console.error("⚠️ Authorization error:", err.message);
+
+      if (err.message === 'Database timeout' || err.message.includes('timeout') || err.message.includes('Connection terminated')) {
+        // Security: do NOT fall back to JWT-only. Reject with 503 so users retry.
+        return res.status(503).json({
+          message: "Authorization service temporarily unavailable. Please try again in a moment.",
+          error: "DB_TIMEOUT"
+        });
+      }
+
       return res.status(500).json({
-        message: "Authorization validation failed"
+        message: "Authorization validation failed",
+        error: err.message
       });
     }
   };

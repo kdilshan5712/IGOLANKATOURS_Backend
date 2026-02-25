@@ -2,11 +2,11 @@ import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {
   getAllBookings,
+  updateBookingStatus,
+  getBookingDetails,
   getAvailableGuides,
   assignGuideToBooking,
-  unassignGuideFromBooking,
-  updateBookingStatus,
-  getBookingDetails
+  unassignGuideFromBooking
 } from "../controllers/admin.booking.controller.js";
 
 const router = express.Router();
@@ -23,13 +23,13 @@ router.get("/available-guides", getAvailableGuides);
 // GET specific booking details
 router.get("/:bookingId", getBookingDetails);
 
+// PATCH update booking status
+router.patch("/:bookingId/status", updateBookingStatus);
+
 // POST assign guide to booking
 router.post("/:bookingId/assign-guide", assignGuideToBooking);
 
 // POST unassign guide from booking
 router.post("/:bookingId/unassign-guide", unassignGuideFromBooking);
-
-// PATCH update booking status
-router.patch("/:bookingId/status", updateBookingStatus);
 
 export default router;

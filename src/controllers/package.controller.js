@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import pricingService from "../services/pricing.service.js";
 
 /**
  * GET ALL PACKAGES (PUBLIC - No auth required)
@@ -14,11 +15,11 @@ import db from "../config/db.js";
  * - offset: Pagination offset (default: 0)
  */
 export const getAllPackages = async (req, res) => {
-  const { 
-    category, 
-    budget, 
-    min_price, 
-    max_price, 
+  const {
+    category,
+    budget,
+    min_price,
+    max_price,
     search,
     limit = 50,
     offset = 0
@@ -30,13 +31,15 @@ export const getAllPackages = async (req, res) => {
         package_id,
         name,
         description,
-        price,
+        base_price as price,
         duration,
         category,
         budget,
         hotel,
         rating,
-        image
+        image,
+        season_type,
+        coast_type
       FROM tour_packages
       WHERE is_active = true
     `;
@@ -60,14 +63,14 @@ export const getAllPackages = async (req, res) => {
 
     // Filter by minimum price
     if (min_price) {
-      query += ` AND price >= $${paramIndex}`;
+      query += ` AND base_price >= $${paramIndex}`;
       params.push(parseFloat(min_price));
       paramIndex++;
     }
 
     // Filter by maximum price
     if (max_price) {
-      query += ` AND price <= $${paramIndex}`;
+      query += ` AND base_price <= $${paramIndex}`;
       params.push(parseFloat(max_price));
       paramIndex++;
     }
@@ -80,7 +83,7 @@ export const getAllPackages = async (req, res) => {
     }
 
     // Order by rating DESC, then price ASC
-    query += ` ORDER BY rating DESC, price ASC`;
+    query += ` ORDER BY rating DESC, base_price ASC`;
 
     // Pagination
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -104,12 +107,12 @@ export const getAllPackages = async (req, res) => {
       countParamIndex++;
     }
     if (min_price) {
-      countQuery += ` AND price >= $${countParamIndex}`;
+      countQuery += ` AND base_price >= $${countParamIndex}`;
       countParams.push(parseFloat(min_price));
       countParamIndex++;
     }
     if (max_price) {
-      countQuery += ` AND price <= $${countParamIndex}`;
+      countQuery += ` AND base_price <= $${countParamIndex}`;
       countParams.push(parseFloat(max_price));
       countParamIndex++;
     }
@@ -121,11 +124,26 @@ export const getAllPackages = async (req, res) => {
     const countResult = await db.query(countQuery, countParams);
     const totalCount = parseInt(countResult.rows[0].count);
 
+    // Calculate dynamic "From" price for each package (using today's date)
+    const today = new Date();
+    const packagesWithPricing = await Promise.all(result.rows.map(async (pkg) => {
+      const pricing = await pricingService.calculateDynamicPrice(
+        { ...pkg, base_price: pkg.price }, // pkg.price is aliased base_price
+        today
+      );
+      return {
+        ...pkg,
+        currentPrice: pricing.pricePerPerson,
+        seasonLabel: pricing.seasonLabel,
+        isDynamic: pkg.season_type !== 'year_round'
+      };
+    }));
+
     res.json({
       success: true,
-      count: result.rows.length,
+      count: packagesWithPricing.length,
       total: totalCount,
-      packages: result.rows
+      packages: packagesWithPricing
     });
 
   } catch (err) {
@@ -159,7 +177,7 @@ export const getPackageById = async (req, res) => {
         highlights,
         includes AS included,
         excludes AS "notIncluded",
-        price,
+        base_price as price,
         duration,
         category,
         budget,
@@ -168,7 +186,9 @@ export const getPackageById = async (req, res) => {
         image,
         itinerary,
         images,
-        created_at
+        created_at,
+        season_type,
+        coast_type
       FROM tour_packages
       WHERE package_id = $1 AND is_active = true`,
       [id]
@@ -252,10 +272,21 @@ export const getPackageById = async (req, res) => {
 
     const reviewImages = reviewImagesResult.rows.map(row => row.image_url);
 
+    // Calculate pricing for today
+    const today = new Date();
+    const pricing = await pricingService.calculateDynamicPrice(
+      { ...packageData, base_price: packageData.price },
+      today
+    );
+
     res.json({
       success: true,
       package: {
         ...packageData,
+        pricing: {
+          ...pricing,
+          note: "Price calculated for travel today. Select date for exact pricing."
+        },
         reviewStats: {
           totalReviews: parseInt(reviewStats.total_reviews),
           averageRating: parseFloat(reviewStats.average_rating).toFixed(1),
@@ -297,16 +328,18 @@ export const getFeaturedPackages = async (req, res) => {
         package_id,
         name,
         description,
-        price,
+        base_price as price,
         duration,
         category,
         budget,
         hotel,
         rating,
-        image
+        image,
+        season_type,
+        coast_type
       FROM tour_packages
       WHERE is_active = true AND rating >= 4.8
-      ORDER BY rating DESC, price ASC
+      ORDER BY rating DESC, base_price ASC
       LIMIT $1`,
       [parseInt(limit)]
     );
@@ -376,9 +409,9 @@ export const getPackageStats = async (req, res) => {
         COUNT(CASE WHEN budget = 'budget' THEN 1 END) as budget_count,
         COUNT(CASE WHEN budget = 'mid' THEN 1 END) as mid_count,
         COUNT(CASE WHEN budget = 'luxury' THEN 1 END) as luxury_budget_count,
-        MIN(price) as min_price,
-        MAX(price) as max_price,
-        AVG(price) as avg_price,
+        MIN(base_price) as min_price,
+        MAX(base_price) as max_price,
+        AVG(base_price) as avg_price,
         AVG(rating) as avg_rating
       FROM tour_packages
       WHERE is_active = true
@@ -417,6 +450,66 @@ export const getPackageStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to retrieve package statistics"
+    });
+  }
+};
+
+/**
+ * CALCULATE PACKAGE PRICE (PUBLIC)
+ * GET /api/packages/:id/price
+ * Query: date (YYYY-MM-DD), travelers (int)
+ */
+export const calculatePackagePrice = async (req, res) => {
+  const { id } = req.params;
+  // Default to 1 adult if nothing provided. children default to 0.
+  // if travelers is provided (old way), treat as adults (or total). 
+  // But better to use adults/children explicit.
+  const { date, travelers, adults, children } = req.query;
+
+  if (!date) {
+    return res.status(400).json({
+      success: false,
+      message: "Date is required"
+    });
+  }
+
+  // Backwards compatibility: if 'travelers' is passed but 'adults' is not, use travelers as adults
+  const numAdults = adults ? parseInt(adults) : (travelers ? parseInt(travelers) : 1);
+  const numChildren = children ? parseInt(children) : 0;
+
+  try {
+    const result = await db.query(
+      `SELECT package_id, base_price as price, season_type, coast_type 
+       FROM tour_packages 
+       WHERE package_id = $1 AND is_active = true`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Package not found"
+      });
+    }
+
+    const pkg = result.rows[0];
+    const pricing = await pricingService.calculateDynamicPrice(
+      { ...pkg, base_price: pkg.price },
+      date,
+      numAdults,
+      numChildren
+    );
+
+    res.json({
+      success: true,
+      pricing
+    });
+
+  } catch (err) {
+    console.error("❌ Calculate price error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to calculate price"
     });
   }
 };

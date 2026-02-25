@@ -1,14 +1,14 @@
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {
-  getPendingGuides,
-  getGuideDocuments,
-  getAllGuides,
-  getGuideDetails,
-  getPendingApplications,
-  getApprovedGuides,
-  getGuidesWithDocuments,
-  getDocumentUrl
+   getPendingGuides,
+   getGuideDocuments,
+   getAllGuides,
+   getGuideDetails,
+   getPendingApplications,
+   getApprovedGuides,
+   getGuidesWithDocuments,
+   getDocumentUrl
 } from "../controllers/admin.controller.js";
 import {
    getAllGuideDocuments,
@@ -16,29 +16,48 @@ import {
    rejectGuideDocument
 } from "../controllers/admin.controller.js";
 import {
-  getDashboardStats,
-  getRecentBookings,
-  getAllPackages,
-  createPackage,
-  updatePackage,
-  deletePackage,
-  getAllBookings,
-  updateBookingStatus,
-  getAllReviews,
-  approveReview,
-  rejectReview,
-  getAllUsers,
-  updateUserStatus,
-  markMessageAsRead,
-  getCustomTourRequests,
-  updateCustomTourStatus
+   getDashboardStats,
+   getRecentBookings,
+   getAllPackages,
+   createPackage,
+   updatePackage,
+   deletePackage,
+   getAllBookings,
+   updateBookingStatus,
+   getAllReviews,
+   approveReview,
+   rejectReview,
+   getAllUsers,
+   updateUserStatus,
+   markMessageAsRead,
+   getCustomTourRequests,
+   updateCustomTourStatus,
+   replyCustomTourRequest
 } from "../controllers/admin.extra.controller.js";
-import { getContactMessages } from "../controllers/contact.controller.js";
+import { getContactMessages, replyContactMessage } from "../controllers/contact.controller.js";
+import { getAdminProfile, createAdmin, getAllAdmins } from "../controllers/admin.profile.controller.js";
+import {
+   getAllRules,
+   createRule,
+   updateRule,
+   deleteRule
+} from "../controllers/admin.pricing.controller.js";
 
 const router = express.Router();
 
 // All admin routes are protected
 router.use(authenticate, authorize("admin"));
+
+/* ======================================================
+   ADMIN PROFILE
+   ====================================================== */
+router.get("/me", getAdminProfile);
+
+/* ======================================================
+   ADMIN MANAGEMENT (Only admins can create other admins)
+   ====================================================== */
+router.post("/admins", createAdmin);
+router.get("/admins", getAllAdmins);
 
 // Guide document approval routes (admin only)
 router.get("/guide-documents", getAllGuideDocuments);
@@ -78,12 +97,14 @@ router.patch("/users/:userId/status", updateUserStatus);
 router.get("/contacts", getContactMessages);
 router.get("/contact-messages", getContactMessages); // Alias for spec compliance
 router.patch("/contacts/:messageId/read", markMessageAsRead);
+router.post("/contacts/:messageId/reply", replyContactMessage);
 
 /* ======================================================
    CUSTOM TOUR REQUESTS
    ====================================================== */
 router.get("/custom-tours", getCustomTourRequests);
 router.patch("/custom-tours/:requestId/status", updateCustomTourStatus);
+router.post("/custom-tours/:requestId/reply", replyCustomTourRequest);
 
 /* ======================================================
    GUIDE APPROVAL ROUTES
@@ -113,5 +134,13 @@ router.get("/guides/:guideId/documents", getGuideDocuments);
 
 // Get document URL (for viewing)
 router.get("/guides/:guideId/documents/:documentId/url", getDocumentUrl);
+
+/* ======================================================
+    PRICING RULES MANAGEMENT
+    ====================================================== */
+router.get("/pricing-rules", getAllRules);
+router.post("/pricing-rules", createRule);
+router.put("/pricing-rules/:id", updateRule);
+router.delete("/pricing-rules/:id", deleteRule);
 
 export default router;

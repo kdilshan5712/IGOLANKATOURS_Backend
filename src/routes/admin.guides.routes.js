@@ -17,13 +17,19 @@ const router = express.Router();
 
 router.use(authenticate, authorize("admin"));
 
-// GET all guides (basic info)
-router.get("/", getAllGuides);
-
+// IMPORTANT: Specific routes MUST come before param routes
 // GET approved guides only (for assignment dropdown)
 router.get("/approved", getApprovedGuides);
 
-// GET guide by ID with documents
+// TEST ROUTE - Remove after testing
+router.get("/test", (req, res) => {
+  res.json({ success: true, message: "Test route works!", timestamp: new Date().toISOString() });
+});
+
+// GET all guides (basic info)
+router.get("/", getAllGuides);
+
+// GET guide by ID with documents - MUST be after specific routes
 router.get("/:guideId", getGuideById);
 
 // Approve/reject a document

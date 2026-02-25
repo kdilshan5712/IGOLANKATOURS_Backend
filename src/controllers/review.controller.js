@@ -195,9 +195,34 @@ export const getReviewsForGallery = async (req, res) => {
  */
 export const submitReview = async (req, res) => {
   try {
-    const { packageId, rating, title, comment } = req.body;
+    // Parse form data - FormData sends all values as strings
+    let { packageId, rating, title, comment } = req.body;
     const userId = req.user.user_id;
     const files = req.files; // Array of uploaded images (if any)
+
+    // Convert rating to integer if it's a string from FormData
+    if (typeof rating === 'string') {
+      rating = parseInt(rating, 10);
+    }
+
+    // Ensure packageId is properly typed - keep as-is (database handles UUID/INT conversion)
+    // Don't force conversion if it's a UUID string
+    if (typeof packageId === 'string') {
+      packageId = packageId.trim();
+    } else if (typeof packageId === 'number') {
+      packageId = String(packageId);
+    }
+
+    // Validate packageId is a proper UUID format (all package IDs in this system are UUIDs)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(packageId)) {
+      console.log('Invalid packageId format:', packageId);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid package ID format - all packages use UUID format",
+        received: packageId
+      });
+    }
 
     console.log("\n================================================");
     console.log("=== REVIEW SUBMISSION REQUEST ===");
@@ -218,7 +243,7 @@ export const submitReview = async (req, res) => {
       });
     }
 
-    if (!rating || rating < 1 || rating > 5) {
+    if (!rating || isNaN(rating) || rating < 1 || rating > 5) {
       return res.status(400).json({
         success: false,
         message: "Rating must be between 1 and 5"
@@ -269,10 +294,26 @@ export const submitReview = async (req, res) => {
     }
 
     // Check if package exists
-    const packageCheck = await db.query(
-      'SELECT package_id, name FROM tour_packages WHERE package_id = $1',
-      [packageId]
-    );
+    let packageCheck;
+    try {
+      packageCheck = await db.query(
+        'SELECT package_id, name FROM tour_packages WHERE package_id = $1',
+        [packageId]
+      );
+    } catch (firstError) {
+      console.error('First packageCheck attempt failed:', firstError.code);
+      // Try casting packageId to text for comparison
+      try {
+        packageCheck = await db.query(
+          'SELECT package_id, name FROM tour_packages WHERE package_id::text = $1',
+          [String(packageId)]
+        );
+        console.log('Second packageCheck attempt succeeded with text casting');
+      } catch (secondError) {
+        console.error('Second packageCheck attempt also failed:', secondError.code);
+        throw firstError;
+      }
+    }
 
     if (packageCheck.rows.length === 0) {
       return res.status(404).json({
@@ -286,13 +327,29 @@ export const submitReview = async (req, res) => {
     // ========================================
     
     // Check if user has a confirmed booking for this package
-    const bookingCheck = await db.query(`
-      SELECT b.booking_id, b.status, b.travel_date
-      FROM bookings b
-      WHERE b.user_id = $1 AND b.package_id = $2 AND b.status = 'confirmed'
-      ORDER BY b.created_at DESC
-      LIMIT 1
-    `, [userId, packageId]);
+    let bookingCheck;
+    try {
+      bookingCheck = await db.query(`
+        SELECT b.booking_id, b.status, b.travel_date
+        FROM bookings b
+        WHERE b.user_id = $1 AND b.package_id = $2 AND b.status = 'confirmed'
+        ORDER BY b.created_at DESC
+        LIMIT 1
+      `, [userId, packageId]);
+    } catch (bookError1) {
+      console.error('Booking check failed, attempting text cast:', bookError1.code);
+      try {
+        bookingCheck = await db.query(`
+          SELECT b.booking_id, b.status, b.travel_date
+          FROM bookings b
+          WHERE b.user_id = $1 AND b.package_id::text = $2 AND b.status = 'confirmed'
+          ORDER BY b.created_at DESC
+          LIMIT 1
+        `, [userId, String(packageId)]);
+      } catch (bookError2) {
+        throw bookError1;
+      }
+    }
 
     if (bookingCheck.rows.length === 0) {
       return res.status(403).json({
@@ -326,14 +383,30 @@ export const submitReview = async (req, res) => {
     if (files && files.length > 0) {
       try {
         console.log(`📤 Uploading ${files.length} images to Supabase Storage...`);
+        console.log("📂 File details:", files.map(f => ({
+          originalName: f.originalname,
+          mimetype: f.mimetype,
+          size: f.size
+        })));
+        
         imageUrls = await uploadReviewImages(files, userId);
         console.log(`✅ Images uploaded successfully:`, imageUrls);
       } catch (uploadError) {
         console.error('❌ Image upload failed:', uploadError);
+        console.error('Upload error details:', {
+          message: uploadError.message,
+          stack: uploadError.stack,
+          fileCount: files.length
+        });
+        
         return res.status(500).json({
           success: false,
           message: "Failed to upload images. Please try again.",
-          error: uploadError.message
+          error: uploadError.message,
+          details: {
+            uploadFailed: true,
+            fileCount: files.length
+          }
         });
       }
     } else {
@@ -343,6 +416,18 @@ export const submitReview = async (req, res) => {
     // ========================================
     // INSERT REVIEW INTO DATABASE
     // ========================================
+
+    console.log("📊 Preparing database insert with values:", {
+      userId,
+      packageId,
+      packageIdType: typeof packageId,
+      bookingId,
+      rating,
+      ratingType: typeof rating,
+      hasTitle: !!title,
+      hasComment: !!comment,
+      imageCount: imageUrls.length
+    });
 
     const result = await db.query(`
       INSERT INTO reviews (
@@ -380,7 +465,7 @@ export const submitReview = async (req, res) => {
 
     const review = result.rows[0];
 
-    console.log("✅ Review saved to database:", review.review_id);
+    console.log("✅ Review saved to database:", review.review_id)
 
     // ========================================
     // SEND CONFIRMATION EMAIL
@@ -424,10 +509,44 @@ export const submitReview = async (req, res) => {
 
   } catch (err) {
     console.error("❌ submitReview error:", err);
+    console.error("Error details:", {
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      column: err.column,
+      table: err.table
+    });
+    
+    // Check for specific database errors
+    if (err.code === '23505') { // Unique constraint violation
+      console.error('Duplicate review detected');
+      return res.status(409).json({
+        success: false,
+        message: "A review for this booking already exists"
+      });
+    } else if (err.code === '23503') { // Foreign key constraint
+      console.error('Foreign key constraint violation:', err.detail);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid package ID or booking ID - package or booking not found"
+      });
+    } else if (err.code === '22P02') { // Invalid text representation
+      console.error('Type conversion error:', err.detail);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid data format - " + (err.detail || "type mismatch"),
+        type: 'TYPE_MISMATCH'
+      });
+    }
+    
+    // Return actual error for debugging
     res.status(500).json({
       success: false,
       message: "Failed to submit review",
-      error: err.message
+      error: err.message,
+      code: err.code,
+      detail: process.env.NODE_ENV === 'development' ? err.detail : undefined
     });
   }
 };
