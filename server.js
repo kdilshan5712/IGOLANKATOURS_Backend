@@ -28,6 +28,9 @@ import notificationRoutes from "./src/routes/notification.routes.js";
 import paymentRoutes from "./src/routes/payment.routes.js";
 import destinationRoutes from "./src/routes/destinations.routes.js";
 import chatRoutes from "./src/routes/chat.routes.js";
+import wishlistRoutes from "./src/routes/wishlist.routes.js";
+import faqRoutes from "./src/routes/faq.routes.js";
+import aiRoutes from "./src/routes/ai.routes.js";
 
 console.log("🔄 [SERVER] Routes loaded - Version 4.0 (Security Hardened + AI Agent)");
 
@@ -179,6 +182,19 @@ app.use("/api/destinations", destinationRoutes);
 
 // Chat routes (tour guide & tourist)
 app.use("/api/chat", chatRoutes);
+
+// Gallery routes (public)
+import galleryRoutes from "./src/routes/gallery.routes.js";
+app.use("/api/gallery", galleryRoutes);
+
+// Wishlist routes (tourist authenticated)
+app.use("/api/wishlist", wishlistRoutes);
+
+// FAQ routes (public)
+app.use("/api/faqs", faqRoutes);
+
+// AI Agent routes (Database side-effects)
+app.use("/api/ai", aiRoutes);
 
 // AI Agent — proxy to Python FastAPI microservice on port 8000
 // The Python service handles: /api/ai/chat, /api/ai/weather, /api/ai/recommend

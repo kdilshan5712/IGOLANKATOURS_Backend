@@ -92,10 +92,6 @@ export const registerTourist = async (req, res) => {
         errors.phone = "Phone number must be at least 7 digits";
       } else if (cleanedPhone.length > 20) {
         errors.phone = "Phone number must not exceed 20 digits";
-      } else if (cleanedPhone.startsWith("94") && cleanedPhone.length !== 12) {
-        errors.phone = "Invalid Sri Lanka phone format (international)";
-      } else if (cleanedPhone.startsWith("0") && cleanedPhone.length !== 10) {
-        errors.phone = "Invalid Sri Lanka phone format (local)";
       }
     }
 
@@ -113,6 +109,7 @@ export const registerTourist = async (req, res) => {
 
     // Return all validation errors at once
     if (Object.keys(errors).length > 0) {
+      console.warn("⚠️ [REGISTER] Validation failed:", JSON.stringify(errors));
       return res.status(400).json({
         message: "Validation failed",
         errors

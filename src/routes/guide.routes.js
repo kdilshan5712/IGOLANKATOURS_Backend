@@ -17,7 +17,10 @@ import {
   getAvailability,
   setAvailability,
   markTourCompleted,
-  getGuideReviews
+  getGuideReviews,
+  updateBankDetails,
+  requestPayout,
+  getPayoutHistory
 } from "../controllers/guide.controller.js";
 
 const router = express.Router();
@@ -137,6 +140,30 @@ router.get(
   authenticate,
   authorize("guide"),
   getGuideReviews
+);
+
+// Update bank details (authenticated guide only)
+router.put(
+  "/me/bank-details",
+  authenticate,
+  authorize("guide"),
+  updateBankDetails
+);
+
+// Request payout (authenticated active guide only)
+router.post(
+  "/payouts/request",
+  authenticate,
+  authorize("guide"),
+  requestPayout
+);
+
+// Get payout history (authenticated guide only)
+router.get(
+  "/payouts",
+  authenticate,
+  authorize("guide"),
+  getPayoutHistory
 );
 
 export default router;

@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
+import { getAllPayoutRequests, updatePayoutStatus } from "../controllers/admin.payout.controller.js";
 import {
    getPendingGuides,
    getGuideDocuments,
@@ -8,8 +9,11 @@ import {
    getPendingApplications,
    getApprovedGuides,
    getGuidesWithDocuments,
-   getDocumentUrl
+   getDocumentUrl,
+   uploadProfilePhoto,
+   deleteProfilePhoto
 } from "../controllers/admin.controller.js";
+import upload from "../middleware/upload.middleware.js";
 import {
    getAllGuideDocuments,
    approveGuideDocument,
@@ -24,9 +28,6 @@ import {
    deletePackage,
    getAllBookings,
    updateBookingStatus,
-   getAllReviews,
-   approveReview,
-   rejectReview,
    getAllUsers,
    updateUserStatus,
    markMessageAsRead,
@@ -52,6 +53,8 @@ router.use(authenticate, authorize("admin"));
    ADMIN PROFILE
    ====================================================== */
 router.get("/me", getAdminProfile);
+router.post("/profile-photo", upload.single("profile_photo"), uploadProfilePhoto);
+router.delete("/profile-photo", deleteProfilePhoto);
 
 /* ======================================================
    ADMIN MANAGEMENT (Only admins can create other admins)
@@ -77,13 +80,6 @@ router.get("/packages", getAllPackages);
 router.post("/packages", createPackage);
 router.put("/packages/:packageId", updatePackage);
 router.delete("/packages/:packageId", deletePackage);
-
-/* ======================================================
-   REVIEWS MANAGEMENT
-   ====================================================== */
-router.get("/reviews", getAllReviews);
-router.patch("/reviews/:reviewId/approve", approveReview);
-router.patch("/reviews/:reviewId/reject", rejectReview);
 
 /* ======================================================
    USERS MANAGEMENT
@@ -142,5 +138,11 @@ router.get("/pricing-rules", getAllRules);
 router.post("/pricing-rules", createRule);
 router.put("/pricing-rules/:id", updateRule);
 router.delete("/pricing-rules/:id", deleteRule);
+
+/* ======================================================
+    PAYOUT MANAGEMENT
+    ====================================================== */
+router.get("/payouts", getAllPayoutRequests);
+router.patch("/payouts/:id/status", updatePayoutStatus);
 
 export default router;

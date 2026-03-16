@@ -27,8 +27,17 @@ export const getTourMessages = async (req, res) => {
                 return res.status(403).json({ success: false, message: "Not authorized to view this chat" });
             }
 
-            if (userRole === "guide" && booking.assigned_guide_id !== userId) {
-                return res.status(403).json({ success: false, message: "Not authorized to view this chat" });
+            if (userRole === "guide") {
+                // assigned_guide_id stores tour_guide.guide_id, but JWT has user_id
+                // So we need to look up the user_id for the assigned guide
+                const guideUserResult = await db.query(
+                    `SELECT user_id FROM tour_guide WHERE guide_id = $1`,
+                    [booking.assigned_guide_id]
+                );
+                const assignedGuideUserId = guideUserResult.rows[0]?.user_id;
+                if (assignedGuideUserId !== userId) {
+                    return res.status(403).json({ success: false, message: "Not authorized to view this chat" });
+                }
             }
         }
 
@@ -52,7 +61,6 @@ export const getTourMessages = async (req, res) => {
       ORDER BY m.created_at ASC
     `;
 
-        console.log("EXECUTING MESSAGES QUERY:", messagesQuery.trim());
         const messagesResult = await db.query(messagesQuery, [bookingId]);
 
         // 3. Mark unread messages directed to this user as read
@@ -116,9 +124,17 @@ export const sendTourMessage = async (req, res) => {
             if (!booking.assigned_guide_id) {
                 return res.status(400).json({ success: false, message: "No guide assigned to this tour yet" });
             }
-            receiverId = booking.assigned_guide_id;
+            // assigned_guide_id is tour_guide.guide_id — look up their user_id
+            const guideUserRes = await db.query(`SELECT user_id FROM tour_guide WHERE guide_id = $1`, [booking.assigned_guide_id]);
+            receiverId = guideUserRes.rows[0]?.user_id || null;
+            if (!receiverId) {
+                return res.status(400).json({ success: false, message: "Assigned guide account not found" });
+            }
         } else if (userRole === "guide") {
-            if (booking.assigned_guide_id !== senderId) {
+            // Look up this guide's guide_id from their user_id
+            const guideRecordRes = await db.query(`SELECT user_id FROM tour_guide WHERE guide_id = $1`, [booking.assigned_guide_id]);
+            const assignedGuideUserId = guideRecordRes.rows[0]?.user_id;
+            if (assignedGuideUserId !== senderId) {
                 return res.status(403).json({ success: false, message: "Not authorized to send message for this booking" });
             }
             receiverId = booking.user_id;

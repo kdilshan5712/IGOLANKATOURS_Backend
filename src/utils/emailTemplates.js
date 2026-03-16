@@ -7,20 +7,28 @@ const BRAND_COLOR = '#2563eb'; // Blue
 const ACCENT_COLOR = '#f59e0b'; // Gold
 
 const emailHeader = `
-  <div style="background: linear-gradient(135deg, ${BRAND_COLOR} 0%, #1e40af 100%); padding: 30px; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">iGo Lanka Tours</h1>
-    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Your Adventure Awaits</p>
+  <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 40px 30px; text-align: center;">
+    <img src="https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg" alt="I GO LANKA TOURS" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 15px; border: 3px solid rgba(255,255,255,0.2);">
+    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">I GO LANKA TOURS</h1>
+    <p style="color: #fbbf24; margin: 5px 0 0 0; font-size: 16px; font-weight: 500; font-style: italic;">An Amazing Destination</p>
   </div>
 `;
 
 const emailFooter = `
-  <div style="background: #f3f4f6; padding: 30px; text-align: center; margin-top: 40px;">
-    <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">
-      © 2026 iGo Lanka Tours. All rights reserved.
-    </p>
-    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      This is an automated notification. Please do not reply to this email.
-    </p>
+  <div style="background: #f8fafc; padding: 40px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+    <div style="margin-bottom: 25px;">
+      <h4 style="color: #1e293b; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Contact Us</h4>
+      <p style="color: #64748b; font-size: 14px; margin: 5px 0;">📞 +94 77 763 9196  |  ✉️ tours.igolanka@gmail.com</p>
+      <p style="color: #64748b; font-size: 14px; margin: 5px 0;">📍 Katunayaka, Sri Lanka</p>
+    </div>
+    <div style="border-top: 1px solid #f1f5f9; padding-top: 20px;">
+      <p style="color: #94a3b8; font-size: 13px; margin: 0 0 5px 0;">
+        © 2026 I GO LANKA TOURS. All rights reserved.
+      </p>
+      <p style="color: #cbd5e1; font-size: 11px; margin: 0;">
+        You're receiving this because you booked a tour with us. This is an automated notification.
+      </p>
+    </div>
   </div>
 `;
 

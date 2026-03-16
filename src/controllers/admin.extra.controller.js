@@ -20,13 +20,54 @@ export const getDashboardStats = async (req, res) => {
         (SELECT COUNT(*) FROM reviews WHERE status = 'pending') as pending_reviews,
         (SELECT COUNT(*) FROM tour_packages) as total_packages,
         (SELECT COUNT(*) FROM contact_messages WHERE status = 'new') as new_messages,
-        (SELECT COUNT(*) FROM chatbot_session) as pending_requests,
-        (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as total_revenue
+        (SELECT COUNT(*) FROM chatbot_session WHERE status = 'pending') as pending_requests,
+        (SELECT COUNT(*) FROM payout_requests WHERE status = 'pending') as pending_payouts,
+      (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as total_revenue
     `);
+
+    // Fetch Revenue Trends (Last 6 Months)
+    const revenueTrendsResult = await db.query(`
+      SELECT 
+        TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') as name,
+        SUM(total_price) as revenue
+      FROM bookings
+      WHERE created_at >= NOW() - INTERVAL '6 months'
+      GROUP BY DATE_TRUNC('month', created_at)
+      ORDER BY DATE_TRUNC('month', created_at) ASC
+    `);
+
+    // Fetch Booking Status Distribution
+    const bookingStatusResult = await db.query(`
+      SELECT 
+        status as name,
+        COUNT(*) as value
+      FROM bookings
+      GROUP BY status
+    `);
+
+    // Fetch Top Packages
+    const topPackagesResult = await db.query(`
+      SELECT 
+        p.name,
+        COUNT(b.booking_id) as bookings
+      FROM tour_packages p
+      LEFT JOIN bookings b ON p.package_id = b.package_id
+      GROUP BY p.package_id, p.name
+      ORDER BY bookings DESC
+      LIMIT 5
+    `);
+
+    const stats = statsResult.rows[0];
+    stats.revenueTrends = revenueTrendsResult.rows.map(row => ({ name: row.name, revenue: parseFloat(row.revenue) || 0 }));
+    stats.bookingDistribution = bookingStatusResult.rows.map(row => ({ name: row.name, value: parseInt(row.value) || 0 }));
+    stats.topPackages = topPackagesResult.rows.map(row => ({
+      name: (row.name.length > 15) ? row.name.substring(0, 15) + '...' : row.name,
+      bookings: parseInt(row.bookings) || 0
+    }));
 
     res.json({
       success: true,
-      stats: statsResult.rows[0]
+      stats: stats
     });
   } catch (err) {
     console.error("getDashboardStats error:", err);
@@ -361,14 +402,13 @@ export const getAllReviews = async (req, res) => {
 export const approveReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
-    const adminId = req.user?.user_id;
 
     const result = await db.query(`
       UPDATE reviews
-      SET status = 'approved', reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW()
+      SET status = 'approved'
       WHERE review_id = $1
       RETURNING *
-    `, [reviewId, adminId]);
+    `, [reviewId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -383,10 +423,11 @@ export const approveReview = async (req, res) => {
       review: result.rows[0]
     });
   } catch (err) {
-    console.error("approveReview error:", err);
+    console.error("approveReview error:", err.message);
     res.status(500).json({
       success: false,
-      message: "Failed to approve review"
+      message: "Failed to approve review",
+      details: err.message
     });
   }
 };
@@ -394,14 +435,13 @@ export const approveReview = async (req, res) => {
 export const rejectReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
-    const adminId = req.user?.user_id;
 
     const result = await db.query(`
       UPDATE reviews
-      SET status = 'rejected', reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW()
+      SET status = 'rejected'
       WHERE review_id = $1
       RETURNING *
-    `, [reviewId, adminId]);
+    `, [reviewId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -416,10 +456,11 @@ export const rejectReview = async (req, res) => {
       review: result.rows[0]
     });
   } catch (err) {
-    console.error("rejectReview error:", err);
+    console.error("rejectReview error:", err.message);
     res.status(500).json({
       success: false,
-      message: "Failed to reject review"
+      message: "Failed to reject review",
+      details: err.message
     });
   }
 };

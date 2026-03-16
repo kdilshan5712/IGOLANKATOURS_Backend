@@ -100,6 +100,22 @@ export const createBooking = async (req, res) => {
     );
 
     const total_price = pricing.totalPrice;
+    
+    // Calculate days until travel
+    const daysUntilTravel = Math.ceil((travelDateObj - today) / (1000 * 60 * 60 * 24));
+    
+    let deposit_amount, balance_amount;
+    
+    if (daysUntilTravel <= 30) {
+      // Full payment required if within 30 days
+      deposit_amount = total_price;
+      balance_amount = 0;
+    } else {
+      // 30% deposit allowed
+      deposit_amount = Math.round(total_price * 0.3 * 100) / 100;
+      balance_amount = Math.round((total_price - deposit_amount) * 100) / 100;
+    }
+    
     const { seasonLabel, multiplier } = pricing;
 
     // Generate Booking Reference (e.g., BOOK-2026-A1B2C3D4)
@@ -113,10 +129,10 @@ export const createBooking = async (req, res) => {
     // Create booking (Only insert columns that exist in the schema)
     const result = await client.query(
       `INSERT INTO bookings 
-       (user_id, package_id, travel_date, travelers, total_price, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       (user_id, package_id, travel_date, travelers, total_price, deposit_amount, balance_amount, status, payment_status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
        RETURNING *`,
-      [user_id, package_id, travel_date, totalTravelers, total_price, 'confirmed']
+      [user_id, package_id, travel_date, totalTravelers, total_price, deposit_amount, balance_amount, 'confirmed', 'pending']
     );
 
     const booking = result.rows[0];

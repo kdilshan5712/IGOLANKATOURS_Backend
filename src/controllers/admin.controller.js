@@ -30,12 +30,12 @@ export const getAllGuideDocuments = async (req, res) => {
 export const getGuidesWithDocuments = async (req, res) => {
   try {
     const { status } = req.query;
-    
+
     console.log('📋 Fetching guides with documents, status filter:', status);
-    
+
     // Build WHERE clause based on status filter
     let whereConditions = ["u.role = 'guide'"];
-    
+
     if (status === "pending") {
       whereConditions.push("u.status = 'pending'");
     } else if (status === "approved") {
@@ -112,8 +112,8 @@ export const getGuidesWithDocuments = async (req, res) => {
     console.error("❌ Error message:", err.message);
     console.error("❌ Error code:", err.code);
     console.error("❌ Error stack:", err.stack);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to fetch guides with documents",
       error: err.message,
       errorCode: err.code
@@ -204,9 +204,9 @@ export const getDocumentUrl = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Document not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Document not found"
       });
     }
 
@@ -225,22 +225,22 @@ export const getDocumentUrl = async (req, res) => {
     if (signedError) {
       console.error("Error creating signed URL:", signedError);
       // Fall back to public URL even if it might not work
-      return res.json({ 
-        success: true, 
-        url: publicData.publicUrl 
+      return res.json({
+        success: true,
+        url: publicData.publicUrl
       });
     }
 
     // Prefer signed URL as it works for both public and private buckets
-    res.json({ 
-      success: true, 
-      url: signedData.signedUrl 
+    res.json({
+      success: true,
+      url: signedData.signedUrl
     });
   } catch (err) {
     console.error("Error getting document URL:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to get document URL" 
+    res.status(500).json({
+      success: false,
+      message: "Failed to get document URL"
     });
   }
 };
@@ -277,9 +277,9 @@ export const getPendingGuides = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin getPendingGuides error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch pending guides" 
+      message: "Failed to fetch pending guides"
     });
   }
 };
@@ -374,8 +374,8 @@ export const approveGuide = async (req, res) => {
     );
 
     if (parseInt(docCheck.rows[0].doc_count) === 0) {
-      return res.status(400).json({ 
-        message: "Cannot approve guide without documents" 
+      return res.status(400).json({
+        message: "Cannot approve guide without documents"
       });
     }
 
@@ -386,8 +386,8 @@ export const approveGuide = async (req, res) => {
     );
 
     if (!result.rows[0].success) {
-      return res.status(400).json({ 
-        message: result.rows[0].message 
+      return res.status(400).json({
+        message: result.rows[0].message
       });
     }
 
@@ -415,9 +415,9 @@ export const approveGuide = async (req, res) => {
         .catch(err => console.error("Email send failed:", err));
     }
 
-    res.json({ 
+    res.json({
       success: true,
-      message: "Guide approved successfully" 
+      message: "Guide approved successfully"
     });
   } catch (err) {
     console.error("Admin approveGuide error:", err);
@@ -455,14 +455,14 @@ export const rejectGuide = async (req, res) => {
     const guide = guideCheck.rows[0];
 
     if (guide.approved) {
-      return res.status(400).json({ 
-        message: "Cannot reject an already approved guide" 
+      return res.status(400).json({
+        message: "Cannot reject an already approved guide"
       });
     }
 
     if (guide.status === "rejected") {
-      return res.status(400).json({ 
-        message: "Guide already rejected" 
+      return res.status(400).json({
+        message: "Guide already rejected"
       });
     }
 
@@ -475,8 +475,8 @@ export const rejectGuide = async (req, res) => {
     );
 
     if (!result.rows[0].success) {
-      return res.status(400).json({ 
-        message: result.rows[0].message 
+      return res.status(400).json({
+        message: result.rows[0].message
       });
     }
 
@@ -553,9 +553,9 @@ export const getAllGuides = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin getAllGuides error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch guides" 
+      message: "Failed to fetch guides"
     });
   }
 };
@@ -568,9 +568,9 @@ export const getGuideDetails = async (req, res) => {
     const { guideId } = req.params;
 
     if (!guideId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Invalid guide ID" 
+        message: "Invalid guide ID"
       });
     }
 
@@ -592,9 +592,9 @@ export const getGuideDetails = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Guide not found" 
+        message: "Guide not found"
       });
     }
 
@@ -614,7 +614,7 @@ export const getGuideDetails = async (req, res) => {
 
     const guide = result.rows[0];
     guide.documents = documentsResult.rows;
-    
+
     // Add fields that don't exist in schema as null
     guide.languages = null;
     guide.experience_years = null;
@@ -631,10 +631,131 @@ export const getGuideDetails = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin getGuideDetails error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch guide details" 
+      message: "Failed to fetch guide details"
     });
+  }
+};
+
+/* ======================================================
+   UPLOAD ADMIN PROFILE PHOTO
+   POST /api/admin/profile-photo
+   Auth: Required (Admin only)
+   ====================================================== */
+export const uploadProfilePhoto = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
+
+    if (!file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ success: false, message: "File must be an image" });
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: "Image size must be less than 5MB" });
+    }
+
+    const adminResult = await db.query(
+      `SELECT profile_photo FROM admin WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (adminResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Admin profile not found" });
+    }
+
+    const oldPhotoPath = adminResult.rows[0].profile_photo;
+
+    const fileExt = file.originalname.split('.').pop();
+    const fileName = `admin-${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `admin-photos/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from("profile-photos")
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+
+    if (error) {
+      console.error("Supabase upload error:", error);
+      return res.status(500).json({ success: false, message: "Failed to upload photo to storage", detail: error.message });
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("profile-photos")
+      .getPublicUrl(filePath);
+
+    const photoUrl = urlData?.publicUrl || filePath;
+
+    await db.query(
+      `UPDATE admin SET profile_photo = $1 WHERE user_id = $2`,
+      [photoUrl, userId]
+    );
+
+    if (oldPhotoPath && oldPhotoPath.includes('profile-photos/')) {
+      try {
+        const oldPathRaw = oldPhotoPath.split('profile-photos/')[1];
+        await supabase.storage.from("profile-photos").remove([oldPathRaw]);
+      } catch (err) {
+        console.error("Failed to delete old admin photo:", err);
+      }
+    }
+
+    res.json({ success: true, message: "Profile photo uploaded successfully", profile_photo: photoUrl });
+  } catch (err) {
+    console.error("❌ admin uploadProfilePhoto error:", err);
+    res.status(500).json({ success: false, message: "Failed to upload profile photo" });
+  }
+};
+
+/* ======================================================
+   DELETE ADMIN PROFILE PHOTO
+   DELETE /api/admin/profile-photo
+   Auth: Required (Admin only)
+   ====================================================== */
+export const deleteProfilePhoto = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const adminResult = await db.query(
+      `SELECT profile_photo FROM admin WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (adminResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Admin profile not found" });
+    }
+
+    const photoPath = adminResult.rows[0].profile_photo;
+
+    if (!photoPath) {
+      return res.status(400).json({ success: false, message: "No profile photo to delete" });
+    }
+
+    if (photoPath.includes('profile-photos/')) {
+      try {
+        const oldPathRaw = photoPath.split('profile-photos/')[1];
+        await supabase.storage.from("profile-photos").remove([oldPathRaw]);
+      } catch (err) {
+        console.error("Failed to delete photo from storage:", err);
+      }
+    }
+
+    await db.query(
+      `UPDATE admin SET profile_photo = NULL WHERE user_id = $1`,
+      [userId]
+    );
+
+    res.json({ success: true, message: "Profile photo deleted successfully" });
+  } catch (err) {
+    console.error("❌ admin deleteProfilePhoto error:", err);
+    res.status(500).json({ success: false, message: "Failed to delete profile photo" });
   }
 };
 
@@ -654,9 +775,9 @@ export const getPendingApplications = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin getPendingApplications error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch pending applications" 
+      message: "Failed to fetch pending applications"
     });
   }
 };
@@ -677,9 +798,9 @@ export const getApprovedGuides = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin getApprovedGuides error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch approved guides" 
+      message: "Failed to fetch approved guides"
     });
   }
 };
@@ -694,9 +815,9 @@ export const approveGuideAction = async (req, res) => {
 
     // Validate guideId
     if (!guideId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Invalid guide ID" 
+        message: "Invalid guide ID"
       });
     }
 
@@ -710,18 +831,18 @@ export const approveGuideAction = async (req, res) => {
     );
 
     if (guideCheck.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Guide not found" 
+        message: "Guide not found"
       });
     }
 
     const guide = guideCheck.rows[0];
 
     if (guide.approved) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Guide is already approved" 
+        message: "Guide is already approved"
       });
     }
 
@@ -754,9 +875,9 @@ export const approveGuideAction = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin approveGuideAction error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to approve guide" 
+      message: "Failed to approve guide"
     });
   }
 };
@@ -772,17 +893,17 @@ export const rejectGuideAction = async (req, res) => {
 
     // Validate guideId
     if (!guideId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Invalid guide ID" 
+        message: "Invalid guide ID"
       });
     }
 
     // Validate rejection reason
     if (typeof rejection_reason !== "string" || !rejection_reason.trim()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Rejection reason is required" 
+        message: "Rejection reason is required"
       });
     }
 
@@ -796,9 +917,9 @@ export const rejectGuideAction = async (req, res) => {
     );
 
     if (guideCheck.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Guide not found" 
+        message: "Guide not found"
       });
     }
 
@@ -831,9 +952,9 @@ export const rejectGuideAction = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Reject guide error:", err);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      message: "Internal server error" 
+      message: "Internal server error"
     });
   }
 };

@@ -942,11 +942,23 @@ export const resubmitApplication = async (req, res) => {
    ====================================================== */
 export const getGuideDashboardStats = async (req, res) => {
   try {
-    const guideId = req.user.user_id;
+    const userId = req.user.user_id;
 
-    console.log(`[GUIDE] Fetching dashboard stats for guide: ${guideId}`);
+    // Get guide_id first
+    const guideIdRes = await db.query(
+      `SELECT guide_id FROM tour_guide WHERE user_id = $1`,
+      [userId]
+    );
 
-    // Get total tours assigned
+    if (guideIdRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Guide profile not found" });
+    }
+
+    const guideId = guideIdRes.rows[0].guide_id;
+
+    console.log(`[GUIDE] Fetching dashboard stats for guide: ${guideId} (User: ${userId})`);
+
+    // 1. Get total tours assigned
     const toursResult = await db.query(
       `SELECT COUNT(*) as total_tours
        FROM bookings
@@ -954,7 +966,7 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // Get upcoming tours (future tours that are confirmed or pending)
+    // 2. Get upcoming tours (future tours that are confirmed or pending)
     const upcomingResult = await db.query(
       `SELECT COUNT(*) as upcoming_tours
        FROM bookings
@@ -964,8 +976,7 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // Get ongoing tours (started today)
-    // Matching logic from getGuideDashboard: status confirmed AND date is today
+    // 3. Get ongoing tours (started today)
     const ongoingResult = await db.query(
       `SELECT COUNT(*) as ongoing_tours
        FROM bookings
@@ -975,8 +986,7 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // Get completed tours
-    // Matching logic from getGuideDashboard: status completed OR (status confirmed AND date < today)
+    // 4. Get completed tours
     const completedResult = await db.query(
       `SELECT COUNT(*) as completed_tours
        FROM bookings
@@ -985,8 +995,7 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // Get total earnings (sum of completed tour commissions)
-    // Assuming guide gets 10% commission on total price
+    // 5. Get total earnings (assuming 10% commission on completed tours)
     const earningsResult = await db.query(
       `SELECT COALESCE(SUM(total_price * 0.10), 0) as total_earnings
        FROM bookings
@@ -995,38 +1004,132 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // Get average rating from reviews
+    // 6. Get average rating from reviews
     const ratingResult = await db.query(
       `SELECT COALESCE(AVG(r.rating), 0) as avg_rating,
-              COUNT(r.review_id) as review_count
+              COUNT(r.review_id) as total_reviews
        FROM reviews r
        JOIN bookings b ON r.booking_id = b.booking_id
        WHERE b.assigned_guide_id = $1`,
       [guideId]
     );
 
-    const stats = {
-      totalTours: parseInt(toursResult.rows[0].total_tours) || 0,
-      upcomingTours: parseInt(upcomingResult.rows[0].upcoming_tours) || 0,
-      ongoingTours: parseInt(ongoingResult.rows[0].ongoing_tours) || 0,
-      completedTours: parseInt(completedResult.rows[0].completed_tours) || 0,
-      totalEarnings: parseFloat(earningsResult.rows[0].total_earnings) || 0,
-      averageRating: parseFloat(ratingResult.rows[0].avg_rating).toFixed(1) || '0.0',
-      reviewCount: parseInt(ratingResult.rows[0].review_count) || 0
-    };
+    // NEW EXTRAS FOR RECHARTS
+    // 7. Get Earnings Trend (Last 6 months)
+    const earningsTrendResult = await db.query(
+      `WITH RECURSIVE months AS (
+        SELECT DATE_TRUNC('month', CURRENT_DATE) as month
+        UNION ALL
+        SELECT month - INTERVAL '1 month'
+        FROM months
+        WHERE month > DATE_TRUNC('month', CURRENT_DATE - INTERVAL '5 months')
+      )
+      SELECT
+        TO_CHAR(m.month, 'Mon') as month,
+        COALESCE(SUM(b.total_price * 0.10), 0) as earnings
+      FROM months m
+      LEFT JOIN bookings b ON DATE_TRUNC('month', b.travel_date) = m.month
+        AND b.assigned_guide_id = $1
+        AND (b.status = 'completed' OR (b.status = 'confirmed' AND b.travel_date < CURRENT_DATE))
+      GROUP BY m.month
+      ORDER BY m.month;`,
+      [guideId]
+    );
 
-    console.log(`[GUIDE] Dashboard stats calculated:`, stats);
+    // 8. Get Tour Status Distribution
+    const cancelledResult = await db.query(`SELECT COUNT(*) as cancelled FROM bookings WHERE assigned_guide_id = $1 AND status = 'cancelled'`, [guideId]);
+    const distribution = [
+      { name: 'Completed', value: Number(completedResult.rows[0].completed_tours) },
+      { name: 'Upcoming', value: Number(upcomingResult.rows[0].upcoming_tours) },
+      { name: 'Ongoing', value: Number(ongoingResult.rows[0].ongoing_tours) },
+      { name: 'Cancelled', value: Number(cancelledResult.rows[0].cancelled) }
+    ].filter(d => d.value > 0);
+
+    // 9. Get top 4 upcoming active tours
+    const nextToursResult = await db.query(
+      `SELECT b.booking_id, b.travel_date, b.travelers, tp.name as package_name, b.status
+       FROM bookings b
+       JOIN tour_packages tp ON b.package_id = tp.package_id
+       WHERE b.assigned_guide_id = $1
+       AND b.travel_date >= CURRENT_DATE
+       AND b.status IN ('confirmed', 'pending')
+       ORDER BY b.travel_date ASC
+       LIMIT 4`,
+      [guideId]
+    );
+
+    // 10. Calculate Earnings Delta (% change from last month)
+    const currentMonthEarnings = earningsTrendResult.rows[5]?.earnings || 0;
+    const lastMonthEarnings = earningsTrendResult.rows[4]?.earnings || 0;
+    let earningsDelta = 0;
+    if (lastMonthEarnings > 0) {
+      earningsDelta = ((currentMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100;
+    } else if (currentMonthEarnings > 0) {
+      earningsDelta = 100; // infinite growth from 0 is capped/represented as 100%
+    }
+
+    // 11. Get Top 3 Recent Reviews
+    const recentReviewsResult = await db.query(
+      `SELECT 
+         r.review_id,
+         r.rating,
+         r.comment,
+         r.created_at,
+         t.full_name as tourist_name,
+         p.name as package_name
+       FROM reviews r
+       JOIN bookings b ON r.booking_id = b.booking_id
+       JOIN tour_packages p ON b.package_id = p.package_id
+       LEFT JOIN users u ON b.user_id = u.user_id
+       LEFT JOIN tourist t ON u.user_id = t.user_id
+       WHERE b.assigned_guide_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT 3`,
+      [guideId]
+    );
+
+    // 12. Get Payout Stats (Sum of all paid or pending payout requests)
+    const payoutStatsResult = await db.query(
+      `SELECT COALESCE(SUM(amount), 0) as total_requested
+       FROM payout_requests
+       WHERE guide_id = $1
+       AND status IN ('pending', 'approved', 'paid')`,
+      [guideId]
+    );
+
+    // FIXED: guideId above is actually userId. Let me fix the naming in the whole function or just use it correctly.
+    // In getGuideDashboardStats, guideId = req.user.user_id (from line 964).
+    
+    const totalEarnings = Number(earningsResult.rows[0].total_earnings);
+    const totalRequested = Number(payoutStatsResult.rows[0].total_requested);
+    const availableBalance = Math.max(0, totalEarnings - totalRequested);
 
     res.json({
       success: true,
-      stats
+      stats: {
+        totalTours: Number(toursResult.rows[0].total_tours),
+        upcomingTours: Number(upcomingResult.rows[0].upcoming_tours),
+        ongoingTours: Number(ongoingResult.rows[0].ongoing_tours),
+        completedTours: Number(completedResult.rows[0].completed_tours),
+        totalEarnings: totalEarnings,
+        averageRating: Number(ratingResult.rows[0].avg_rating).toFixed(1),
+        totalReviews: Number(ratingResult.rows[0].total_reviews),
+        earningsTrend: earningsTrendResult.rows.map(row => ({ month: row.month, earnings: Number(row.earnings) })),
+        tourDistribution: distribution,
+        nextTours: nextToursResult.rows,
+        earningsDelta: Math.round(earningsDelta),
+        recentReviews: recentReviewsResult.rows,
+        availableBalance: Number(availableBalance.toFixed(2))
+      }
     });
 
   } catch (err) {
     console.error("[GUIDE] getDashboardStats error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch dashboard statistics"
+      message: "Failed to fetch dashboard statistics",
+      error: err.message,
+      stack: err.stack
     });
   }
 };
@@ -1053,7 +1156,7 @@ export const getAvailability = async (req, res) => {
 
     // Get all future availability
     const availResult = await db.query(
-      `SELECT date, status, notes
+      `SELECT date, status
        FROM guide_availability
        WHERE guide_id = $1 AND date >= CURRENT_DATE
        ORDER BY date ASC`,
@@ -1112,17 +1215,22 @@ export const setAvailability = async (req, res) => {
 
     // Insert or update
     await db.query(
-      `INSERT INTO guide_availability (guide_id, date, status, notes)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO guide_availability (guide_id, date, status)
+       VALUES ($1, $2, $3)
        ON CONFLICT (guide_id, date)
-       DO UPDATE SET status = EXCLUDED.status, notes = EXCLUDED.notes`,
-      [guideId, date, status, notes || null]
+       DO UPDATE SET status = EXCLUDED.status`,
+      [guideId, date, status]
     );
 
     res.json({ success: true, message: "Availability updated" });
   } catch (err) {
     console.error("❌ setAvailability error:", err);
-    res.status(500).json({ success: false, message: "Failed to update availability" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update availability",
+      error: err.message,
+      stack: err.stack
+    });
   }
 };
 
@@ -1278,5 +1386,151 @@ export const getGuideReviews = async (req, res) => {
       success: false,
       message: "Failed to fetch reviews"
     });
+  }
+};
+
+/* ======================================================
+   UPDATE BANK DETAILS
+   PUT /api/guide/bank-details
+   ====================================================== */
+export const updateBankDetails = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { bank_name, account_no, account_name, branch_name } = req.body;
+
+    if (!bank_name || !account_no || !account_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Bank name, account number, and account name are required"
+      });
+    }
+
+    const result = await db.query(
+      `UPDATE tour_guide 
+       SET bank_name = $1, account_no = $2, account_name = $3, branch_name = $4, updated_at = NOW()
+       WHERE user_id = $5
+       RETURNING *`,
+      [bank_name, account_no, account_name, branch_name, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Guide profile not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Bank details updated successfully",
+      guide: result.rows[0]
+    });
+  } catch (err) {
+    console.error("❌ updateBankDetails error:", err);
+    res.status(500).json({ success: false, message: "Failed to update bank details" });
+  }
+};
+
+/* ======================================================
+   REQUEST PAYOUT
+   POST /api/guide/payouts/request
+   ====================================================== */
+export const requestPayout = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { amount } = req.body;
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({ success: false, message: "Invalid payout amount" });
+    }
+
+    // 1. Get guide_id and check if bank details are set
+    const guideResult = await db.query(
+      `SELECT guide_id, bank_name, account_no FROM tour_guide WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (guideResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Guide profile not found" });
+    }
+
+    const guide = guideResult.rows[0];
+    if (!guide.bank_name || !guide.account_no) {
+      return res.status(400).json({
+        success: false,
+        message: "Please set your bank details in your profile before requesting a payout"
+      });
+    }
+
+    // 2. Calculate available balance
+    // Get total earnings
+    const earningsResult = await db.query(
+      `SELECT COALESCE(SUM(total_price * 0.10), 0) as total_earnings
+       FROM bookings
+       WHERE assigned_guide_id = $1
+       AND status = 'completed'`,
+      [guide.guide_id]
+    );
+
+    // Get total requested (pending, approved, paid)
+    const payoutStatsResult = await db.query(
+      `SELECT COALESCE(SUM(amount), 0) as total_requested
+       FROM payout_requests
+       WHERE guide_id = $1
+       AND status IN ('pending', 'approved', 'paid')`,
+      [guide.guide_id]
+    );
+
+    const availableBalance = Math.max(0, Number(earningsResult.rows[0].total_earnings) - Number(payoutStatsResult.rows[0].total_requested));
+
+    if (Number(amount) > availableBalance) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient balance. Available: $${availableBalance.toFixed(2)}`
+      });
+    }
+
+    // 3. Create payout request
+    const result = await db.query(
+      `INSERT INTO payout_requests (guide_id, amount, status)
+       VALUES ($1, $2, 'pending')
+       RETURNING *`,
+      [guide.guide_id, amount]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Payout request submitted successfully",
+      payout: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("❌ requestPayout error:", err);
+    res.status(500).json({ success: false, message: "Failed to submit payout request" });
+  }
+};
+
+/* ======================================================
+   GET PAYOUT HISTORY
+   GET /api/guide/payouts
+   ====================================================== */
+export const getPayoutHistory = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const result = await db.query(
+      `SELECT pr.*, u.email as processor_email
+       FROM payout_requests pr
+       JOIN tour_guide tg ON pr.guide_id = tg.guide_id
+       LEFT JOIN users u ON pr.processed_by = u.user_id
+       WHERE tg.user_id = $1
+       ORDER BY pr.created_at DESC`,
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      payouts: result.rows
+    });
+  } catch (err) {
+    console.error("❌ getPayoutHistory error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch payout history" });
   }
 };

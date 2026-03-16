@@ -15,7 +15,7 @@ const getDashboardMetrics = async (req, res) => {
       db.query("SELECT COUNT(*) FROM tour_guide tg INNER JOIN users u ON tg.user_id = u.user_id WHERE tg.approved = false"),
       db.query('SELECT COUNT(*) FROM contact_messages WHERE status = $1', ['new']),
       db.query('SELECT COUNT(*) FROM custom_tour_requests WHERE status = $1', ['pending']),
-      db.query('SELECT COALESCE(SUM(total_price),0) FROM bookings WHERE status IN ($1, $2)', ['confirmed', 'completed']),
+      db.query('SELECT COALESCE(SUM(total_price),0) FROM bookings WHERE status IN ($1, $2) AND created_at >= DATE_TRUNC(\'month\', CURRENT_DATE)', ['confirmed', 'completed']),
       db.query('SELECT COALESCE(AVG(rating),0) FROM reviews')
     ]);
 
@@ -28,9 +28,48 @@ const getDashboardMetrics = async (req, res) => {
       pending_guide_approvals: Number(pendingGuides.rows[0].count),
       new_messages: Number(messages.rows[0].count),
       pending_requests: Number(customRequests.rows[0].count),
-      total_revenue: Number(revenue.rows[0].coalesce || revenue.rows[0].sum || 0),
+      monthly_revenue: Number(revenue.rows[0].coalesce || revenue.rows[0].sum || 0),
       average_rating: Number(avgRating.rows[0].coalesce || avgRating.rows[0].avg || 0).toFixed(1)
     };
+
+    // Fetch Revenue Trends (Last 6 Months)
+    const revenueTrendsResult = await db.query(`
+      SELECT 
+        TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') as name,
+        SUM(total_price) as revenue
+      FROM bookings
+      WHERE created_at >= NOW() - INTERVAL '6 months'
+      GROUP BY DATE_TRUNC('month', created_at)
+      ORDER BY DATE_TRUNC('month', created_at) ASC
+    `);
+
+    // Fetch Booking Status Distribution
+    const bookingStatusResult = await db.query(`
+      SELECT 
+        status as name,
+        COUNT(*) as value
+      FROM bookings
+      GROUP BY status
+    `);
+
+    // Fetch Top Packages
+    const topPackagesResult = await db.query(`
+      SELECT 
+        p.name,
+        COUNT(b.booking_id) as bookings
+      FROM tour_packages p
+      LEFT JOIN bookings b ON p.package_id = b.package_id
+      GROUP BY p.package_id, p.name
+      ORDER BY bookings DESC
+      LIMIT 5
+    `);
+
+    stats.revenueTrends = revenueTrendsResult.rows.map(row => ({ name: row.name, revenue: parseFloat(row.revenue) || 0 }));
+    stats.bookingDistribution = bookingStatusResult.rows.map(row => ({ name: row.name, value: parseInt(row.value) || 0 }));
+    stats.topPackages = topPackagesResult.rows.map(row => ({
+      name: (row.name.length > 15) ? row.name.substring(0, 15) + '...' : row.name,
+      bookings: parseInt(row.bookings) || 0
+    }));
 
     console.log('✅ [DASHBOARD] Stats calculated:', stats);
 
@@ -67,8 +106,7 @@ const getRecentBookings = async (req, res) => {
         tp.name as package_name,
         tp.package_id,
         b.user_id,
-        b.num_people,
-        b.special_requests
+        b.num_people
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tourist t ON u.user_id = t.user_id
@@ -232,46 +270,52 @@ const generateReport = async (req, res) => {
     }
 
     if (type === 'booking') {
-      const query = `
+      // ── 1. Fetch data first so SQL errors are caught before streaming ──
+      const bookingQuery = `
         SELECT b.*, u.email as user_email, t.full_name as tourist_name, tp.name as package_name
         FROM bookings b
         LEFT JOIN users u ON b.user_id = u.user_id
         LEFT JOIN tourist t ON u.user_id = t.user_id
         LEFT JOIN tour_packages tp ON b.package_id = tp.package_id
-        ${dateFilter.replace('created_at', 'b.created_at')}
+        ${dateFilter.replace(/created_at/g, 'b.created_at')}
         ORDER BY b.created_at DESC
       `;
-      const result = await db.query(query, params);
+      const bookingResult = await db.query(bookingQuery, params);
 
+      // ── 2. Stream (only after all DB work succeeds) ──
       if (format === 'pdf') {
-        await generateBookingReportPDF(result.rows, res);
+        await generateBookingReportPDF(bookingResult.rows, res);
       } else {
-        await generateBookingReportCSV(result.rows, res);
+        await generateBookingReportCSV(bookingResult.rows, res);
       }
     } else if (type === 'user') {
-      const query = `
+      // ── 1. Fetch data first ──
+      const userQuery = `
         SELECT u.*, COALESCE(t.full_name, tg.full_name) as full_name
         FROM users u
         LEFT JOIN tourist t ON u.user_id = t.user_id
         LEFT JOIN tour_guide tg ON u.user_id = tg.user_id
-        ${dateFilter.replace('created_at', 'u.created_at')}
+        ${dateFilter.replace(/created_at/g, 'u.created_at')}
         ORDER BY u.created_at DESC
       `;
-      const result = await db.query(query, params);
+      const userResult = await db.query(userQuery, params);
 
-      // User report only supports CSV for now
-      await generateUserReportCSV(result.rows, res);
+      // ── 2. Always CSV for users (PDF not supported) ──
+      await generateUserReportCSV(userResult.rows, res);
     } else {
-      res.status(400).json({ success: false, message: 'Invalid report type' });
+      return res.status(400).json({ success: false, message: 'Invalid report type. Must be booking or user.' });
     }
 
   } catch (err) {
-    console.error('❌ [REPORT] Failed to generate report:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate report',
-      details: err.message
-    });
+    console.error('❌ [REPORT] Failed to generate report:', err.message);
+    // Only send error JSON if headers haven't been sent yet (i.e. streaming hasn't started)
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate report',
+        details: err.message
+      });
+    }
   }
 };
 

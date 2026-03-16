@@ -3,83 +3,116 @@ import db from "../config/db.js";
 
 const pricingService = {
     /**
-     * Calculate dynamic price for a package based on travel date and coast type
-     * @param {Object} pkg - Package object (must contain base_price, coast_type, season_type)
+     * Calculate dynamic price for a package based on travel date and coast type.
+     * Uses the seasonal_pricing_rules table to apply percentage multipliers.
+     * 
+     * @param {Object} pkg - Package object (must contain base_price, coast_type)
      * @param {string|Date} travelDate - Date of travel
-     * @param {number} travelers - Number of travelers
+     * @param {number} adults - Number of adult travelers
+     * @param {number} children - Number of child travelers
      * @returns {Object} Pricing breakdown
      */
     calculateDynamicPrice: async (pkg, travelDate, adults = 1, children = 0) => {
         try {
             const date = new Date(travelDate);
-            const totalTravelers = parseInt(adults) + parseInt(children);
+            const month = date.getMonth() + 1; // 1-12
+            const day = date.getDate();        // 1-31
 
-            // Default values
-            let multiplier = 1.0;
-            let seasonLabel = 'Standard';
+            let percentageAdjustment = 0;
+            let seasonLabel = 'Standard Rate';
             let appliedRuleId = null;
 
-            // 1. Determine Seasonal Multiplier
-            if (pkg.season_type === 'year_round') {
-                seasonLabel = 'Year Round';
-            } else {
-                const formattedDate = date.toISOString().split('T')[0];
-                const ruleQuery = await db.query(`
-                    SELECT * FROM seasonal_pricing_rules 
-                    WHERE $1 BETWEEN start_date AND end_date
-                    AND (applicable_coast = 'all' OR applicable_coast = $2)
-                    ORDER BY 
-                        CASE WHEN applicable_coast = $2 THEN 1 ELSE 2 END, 
-                        percentage_multiplier DESC 
-                    LIMIT 1
-                `, [formattedDate, pkg.coast_type || 'mixed']);
+            // Find the most specific active rule for this travel date and coast type
+            // Handles rules that wrap across year end (e.g. Dec 1 – Jan 31)
+            const ruleQuery = await db.query(`
+                SELECT * FROM seasonal_pricing_rules
+                WHERE is_active = TRUE
+                AND (coast_type = 'all' OR coast_type = $3)
+                AND (
+                    -- Normal range (start <= end month)
+                    (start_month < end_month 
+                        OR (start_month = end_month AND start_day <= end_day))
+                    AND (
+                        ($1 > start_month OR ($1 = start_month AND $2 >= start_day))
+                        AND ($1 < end_month OR ($1 = end_month AND $2 <= end_day))
+                    )
+                    OR
+                    -- Wrap-around range (e.g. Dec -> Jan)
+                    (start_month > end_month
+                        OR (start_month = end_month AND start_day > end_day))
+                    AND (
+                        ($1 > start_month OR ($1 = start_month AND $2 >= start_day))
+                        OR ($1 < end_month OR ($1 = end_month AND $2 <= end_day))
+                    )
+                )
+                ORDER BY
+                    CASE WHEN coast_type = $3 THEN 1 ELSE 2 END,
+                    ABS(percentage) DESC
+                LIMIT 1
+            `, [month, day, pkg.coast_type || 'all']);
 
-                if (ruleQuery.rows.length > 0) {
-                    const rule = ruleQuery.rows[0];
-                    multiplier = parseFloat(rule.percentage_multiplier);
-                    seasonLabel = rule.season_name.charAt(0).toUpperCase() + rule.season_name.slice(1);
-                    appliedRuleId = rule.id;
-                }
+            if (ruleQuery.rows.length > 0) {
+                const rule = ruleQuery.rows[0];
+                percentageAdjustment = parseFloat(rule.percentage);
+                seasonLabel = rule.name;
+                appliedRuleId = rule.rule_id;
             }
 
-            // 2. Calculate Prices
+            // Calculate prices
             const basePrice = parseFloat(pkg.base_price);
-
-            // Adult Price: Base * Multiplier
+            const multiplier = 1 + (percentageAdjustment / 100);
             const adultPrice = basePrice * multiplier;
+            const childPrice = adultPrice * 0.5; // Children are 50% of adult price
 
-            // Child Price: 50% of Adult Price
-            const childPrice = adultPrice * 0.5;
-
-            // Total Price
             const totalAdultCost = adultPrice * parseInt(adults);
             const totalChildCost = childPrice * parseInt(children);
-            const GRAND_TOTAL = totalAdultCost + totalChildCost;
+            const totalPrice = totalAdultCost + totalChildCost;
+            const totalTravelers = parseInt(adults) + parseInt(children);
 
             return {
-                basePrice: basePrice,
+                basePrice: parseFloat(basePrice.toFixed(2)),
                 adultPrice: parseFloat(adultPrice.toFixed(2)),
                 childPrice: parseFloat(childPrice.toFixed(2)),
-                totalPrice: parseFloat(GRAND_TOTAL.toFixed(2)),
+                totalPrice: parseFloat(totalPrice.toFixed(2)),
                 adults: parseInt(adults),
                 children: parseInt(children),
                 totalTravelers,
                 seasonLabel,
-                multiplier,
+                percentageAdjustment,
+                multiplier: parseFloat(multiplier.toFixed(4)),
                 appliedRuleId
             };
 
         } catch (error) {
-            console.error("Error in calculateDynamicPrice:", error);
-            throw error;
+            console.error("Error in calculateDynamicPrice:", error.message);
+            // Fallback: return base price with no adjustment
+            const basePrice = parseFloat(pkg.base_price || 0);
+            const adultPrice = basePrice;
+            const childPrice = adultPrice * 0.5;
+            const totalPrice = adultPrice * parseInt(adults) + childPrice * parseInt(children);
+            return {
+                basePrice,
+                adultPrice,
+                childPrice,
+                totalPrice: parseFloat(totalPrice.toFixed(2)),
+                adults: parseInt(adults),
+                children: parseInt(children),
+                totalTravelers: parseInt(adults) + parseInt(children),
+                seasonLabel: 'Standard Rate',
+                percentageAdjustment: 0,
+                multiplier: 1.0,
+                appliedRuleId: null
+            };
         }
     },
 
     /**
-     * Get all pricing rules (for Admin)
+     * Get all active pricing rules
      */
     getAllRules: async () => {
-        const result = await db.query('SELECT * FROM seasonal_pricing_rules ORDER BY start_date');
+        const result = await db.query(
+            'SELECT * FROM seasonal_pricing_rules ORDER BY start_month, start_day'
+        );
         return result.rows;
     }
 };

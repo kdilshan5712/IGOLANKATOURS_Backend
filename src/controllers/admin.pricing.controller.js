@@ -55,10 +55,11 @@ export const createRule = async (req, res) => {
             rule: result.rows[0]
         });
     } catch (error) {
-        console.error("Error creating pricing rule:", error);
+        console.error("Error creating pricing rule:", error.message);
         res.status(500).json({
             success: false,
-            message: "Failed to create pricing rule"
+            message: "Failed to create pricing rule",
+            details: error.message
         });
     }
 };

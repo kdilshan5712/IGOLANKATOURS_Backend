@@ -157,11 +157,13 @@ export const getBookingDetails = async (req, res) => {
 
 /**
  * GET AVAILABLE GUIDES
- * GET /api/admin/bookings/available-guides
+ * GET /api/admin/bookings/available-guides?date=YYYY-MM-DD
  */
 export const getAvailableGuides = async (req, res) => {
   try {
-    const result = await db.query(`
+    const { date } = req.query;
+    
+    let query = `
       SELECT 
         tg.guide_id,
         tg.full_name,
@@ -172,8 +174,37 @@ export const getAvailableGuides = async (req, res) => {
       JOIN users u ON tg.user_id = u.user_id
       WHERE tg.approved = true
         AND u.status = 'active'
-      ORDER BY tg.full_name ASC
-    `);
+    `;
+
+    const params = [];
+
+    // If date is provided, check for overlapping bookings or manual unavailability
+    if (date) {
+      query = `
+        SELECT 
+          tg.guide_id,
+          tg.full_name,
+          tg.contact_number,
+          tg.profile_photo,
+          u.email,
+          (SELECT status FROM guide_availability ga WHERE ga.guide_id = tg.guide_id AND ga.date = $1) as manual_status,
+          EXISTS (
+            SELECT 1 FROM bookings b 
+            WHERE b.assigned_guide_id = tg.guide_id 
+              AND b.status IN ('confirmed', 'completed') 
+              AND b.travel_date = $1
+          ) as is_busy
+        FROM tour_guide tg
+        JOIN users u ON tg.user_id = u.user_id
+        WHERE tg.approved = true
+          AND u.status = 'active'
+      `;
+      params.push(date);
+    }
+
+    query += ` ORDER BY tg.full_name ASC`;
+
+    const result = await db.query(query, params);
 
     res.json({
       success: true,
@@ -282,6 +313,39 @@ export const assignGuideToBooking = async (req, res) => {
 
     const guide = guideCheck.rows[0];
     console.log(`[ASSIGN-GUIDE] ✅ Guide found: ${guide.full_name} (${guide.guide_email})`);
+
+    // --- Safety Check: Verify availability for the specific date ---
+    if (booking.travel_date) {
+      const formattedDate = new Date(booking.travel_date).toISOString().split('T')[0];
+      
+      const availabilityCheck = await db.query(`
+        SELECT 
+          (SELECT status FROM guide_availability ga WHERE ga.guide_id = $1 AND ga.date = $2) as manual_status,
+          EXISTS (
+            SELECT 1 FROM bookings b 
+            WHERE b.assigned_guide_id = $1 
+              AND b.status IN ('confirmed', 'completed') 
+              AND b.travel_date = $2
+              AND b.booking_id != $3
+          ) as is_busy
+      `, [guideId, formattedDate, bookingId]);
+
+      const { manual_status, is_busy } = availabilityCheck.rows[0];
+
+      if (manual_status === 'unavailable') {
+        return res.status(400).json({
+          success: false,
+          message: `Guide ${guide.full_name} has marked themselves as unavailable for ${formattedDate}`
+        });
+      }
+
+      if (is_busy) {
+        return res.status(400).json({
+          success: false,
+          message: `Guide ${guide.full_name} is already assigned to another tour on ${formattedDate}`
+        });
+      }
+    }
 
     // Assign guide to booking
     console.log(`[ASSIGN-GUIDE] Updating booking assignment...`);

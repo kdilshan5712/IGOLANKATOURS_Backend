@@ -273,6 +273,40 @@ export const sendGuideRejection = async (email, guideName, rejectionReason) => {
     );
 };
 
+/**
+ * Send payment reminder email
+ */
+export const sendPaymentReminder = async (reminderData) => {
+    const { userEmail, userName, bookingReference, packageName, travelDate, totalPrice, amountPaid, balanceAmount } = reminderData;
+
+    const htmlContent = loadTemplate('paymentReminder', {
+        userName,
+        bookingReference,
+        packageName,
+        travelDate: new Date(travelDate).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }),
+        totalPrice: `$${totalPrice}`,
+        amountPaid: `$${amountPaid}`,
+        balanceAmount: `$${balanceAmount}`,
+        paymentLink: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/bookings/${bookingReference}`
+    });
+
+    if (!htmlContent) {
+        console.error('Failed to load payment reminder template');
+        return { success: false };
+    }
+
+    return await sendEmail(
+        userEmail,
+        `Payment Reminder: Your trip to ${packageName} - ${bookingReference}`,
+        htmlContent
+    );
+};
+
 const emailService = {
     sendEmail,
     sendBookingConfirmation,
@@ -281,7 +315,8 @@ const emailService = {
     sendPasswordReset,
     sendWelcomeEmail,
     sendGuideApproval,
-    sendGuideRejection
+    sendGuideRejection,
+    sendPaymentReminder
 };
 
 export default emailService;
