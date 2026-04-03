@@ -20,7 +20,7 @@ export const getDashboardStats = async (req, res) => {
         (SELECT COUNT(*) FROM reviews WHERE status = 'pending') as pending_reviews,
         (SELECT COUNT(*) FROM tour_packages) as total_packages,
         (SELECT COUNT(*) FROM contact_messages WHERE status = 'new') as new_messages,
-        (SELECT COUNT(*) FROM chatbot_session WHERE status = 'pending') as pending_requests,
+        (SELECT COUNT(*) FROM chatbot_session WHERE status = 'pending_approval') as pending_requests,
         (SELECT COUNT(*) FROM payout_requests WHERE status = 'pending') as pending_payouts,
       (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as total_revenue
     `);
@@ -589,9 +589,9 @@ export const getCustomTourRequests = async (req, res) => {
     const result = await db.query(`
       SELECT 
         cs.*,
-        COALESCE(cm.email, u.email) as user_email,
-        COALESCE(cm.name, t.full_name) as tourist_name,
-        COALESCE(cm.phone, t.phone) as tourist_phone,
+        COALESCE(cs.user_email, cm.email, u.email) as user_email,
+        COALESCE(cs.tourist_name, cm.name, t.full_name) as tourist_name,
+        COALESCE(cs.tourist_phone, cm.phone, t.phone) as tourist_phone,
         cm.status as contact_status,
         cm.message as contact_message
       FROM chatbot_session cs

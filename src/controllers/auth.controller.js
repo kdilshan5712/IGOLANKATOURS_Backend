@@ -76,8 +76,8 @@ export const registerTourist = async (req, res) => {
         errors.full_name = "Full name must not exceed 100 characters";
       } else if (/\d/.test(trimmedName)) {
         errors.full_name = "Full name cannot contain numbers";
-      } else if (!/^[a-zA-Z\s\-']+$/.test(trimmedName)) {
-        errors.full_name = "Full name can only contain letters, spaces, hyphens, and apostrophes";
+      } else if (!/^[a-zA-Z\s\-.']+$/.test(trimmedName)) {
+        errors.full_name = "Full name can only contain letters, spaces, dots, hyphens, and apostrophes";
       } else if (trimmedName.includes("  ")) {
         errors.full_name = "Full name cannot contain consecutive spaces";
       }

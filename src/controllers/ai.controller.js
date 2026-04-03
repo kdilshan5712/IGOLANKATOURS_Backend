@@ -43,6 +43,7 @@ export const saveChatbotSession = async (req, res) => {
 
 export const submitCustomTourRequest = async (req, res) => {
   try {
+    console.log("📥 [AI] Custom tour request received:", JSON.stringify(req.body, null, 2));
     const { 
       tourist_id, title, duration_days, travel_month, 
       traveler_count, hotel_preference, 
@@ -51,6 +52,45 @@ export const submitCustomTourRequest = async (req, res) => {
       // Guest info
       tourist_name, tourist_email, tourist_phone
     } = req.body;
+    const authenticatedUserId = req.user?.user_id;
+    let finalTouristId = tourist_id;
+
+    console.log("🔍 [AI] Processing submission for user_id:", authenticatedUserId);
+
+    if (authenticatedUserId) {
+      const touristLookup = await db.query(
+        "SELECT tourist_id FROM tourist WHERE user_id = $1",
+        [authenticatedUserId]
+      );
+      
+      console.log("📊 [AI] Tourist lookup rows:", touristLookup.rows.length);
+      
+      if (touristLookup.rows.length > 0) {
+        finalTouristId = touristLookup.rows[0].tourist_id;
+        console.log("✅ [AI] Resolved finalTouristId:", finalTouristId);
+      } else {
+        console.warn(`⚠️ [AI] No tourist profile found for user_id ${authenticatedUserId}. Attempting auto-creation.`);
+        try {
+          // Auto-recovery: Create a tourist profile if the user exists but the profile is missing
+          const recovery = await db.query(
+            "INSERT INTO tourist (user_id, full_name, email) VALUES ($1, $2, $3) RETURNING tourist_id",
+            [authenticatedUserId, tourist_name || 'Valued Guest', tourist_email]
+          );
+          finalTouristId = recovery.rows[0].tourist_id;
+          console.log("♻️ [AI] Auto-created tourist_id:", finalTouristId);
+        } catch (recoveryErr) {
+          console.error("❌ [AI] Recovery failed:", recoveryErr.message);
+        }
+      }
+    }
+
+    // Ensure numeric values are numbers
+    const duration = parseInt(duration_days) || 1;
+    const travelers = parseInt(traveler_count) || 1;
+    const priceMin = parseFloat(estimated_price_min) || 0;
+    const priceMax = parseFloat(estimated_price_max) || 0;
+
+    console.log(`📝 [AI] Inserting into chatbot_session with tourist_id: ${finalTouristId}`);
 
     const result = await db.query(`
       INSERT INTO chatbot_session (
@@ -64,11 +104,18 @@ export const submitCustomTourRequest = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending_approval', $10, $11, $12, NOW())
       RETURNING session_id, created_at
     `, [
-      tourist_id || null, title, duration_days, travel_month, 
-      traveler_count, hotel_preference, 
-      estimated_price_min, estimated_price_max,
+      finalTouristId || null, 
+      title || "Custom Tour Request", 
+      duration, 
+      travel_month || "Flexible", 
+      travelers, 
+      hotel_preference || null, 
+      priceMin, 
+      priceMax,
       recommendations ? (typeof recommendations === 'string' ? recommendations : JSON.stringify(recommendations)) : '{}',
-      tourist_name || null, tourist_email || null, tourist_phone || null
+      tourist_name || null, 
+      tourist_email || null, 
+      tourist_phone || null
     ]);
 
     res.status(201).json({

@@ -119,9 +119,11 @@ export const getUserCustomTours = async (req, res) => {
 
   try {
     const result = await db.query(
-      `SELECT * FROM chatbot_session
-       WHERE tourist_id = $1
-       ORDER BY created_at DESC`,
+      `SELECT cs.* 
+       FROM chatbot_session cs
+       JOIN tourist t ON cs.tourist_id = t.tourist_id
+       WHERE t.user_id = $1
+       ORDER BY cs.created_at DESC`,
       [user_id]
     );
 

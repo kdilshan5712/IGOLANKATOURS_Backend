@@ -100,8 +100,8 @@ const authLimiter = rateLimit({
   message: { success: false, message: "Too many login attempts. Please try again in 15 minutes." }
 });
 
-// 5. JSON body parser with a 10kb payload size limit (prevents payload flooding)
-app.use(express.json({ limit: "10kb" }));
+// 5. JSON body parser with a 1mb payload size limit (prevents payload flooding while allowing AI itineraries)
+app.use(express.json({ limit: "1mb" }));
 
 /* -------------------- ROUTES -------------------- */
 

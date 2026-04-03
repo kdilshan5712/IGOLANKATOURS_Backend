@@ -3,6 +3,7 @@ import { saveChatbotSession, submitCustomTourRequest, syncChatHistory } from '..
 import { validate } from '../middleware/validation.middleware.js';
 import { contactSchemas } from '../schemas/contact.schema.js';
 import { aiSchemas } from '../schemas/ai.schema.js';
+import { authenticate } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ const router = express.Router();
  */
 
 router.post('/session', aiSchemas.saveSession, validate, saveChatbotSession);
-router.post('/submit-custom-tour', contactSchemas.customTour, validate, submitCustomTourRequest);
+router.post('/submit-custom-tour', authenticate, contactSchemas.customTour, validate, submitCustomTourRequest);
 router.post('/sync-history', aiSchemas.syncHistory, validate, syncChatHistory);
 
 export default router;
