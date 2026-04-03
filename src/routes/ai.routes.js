@@ -1,5 +1,8 @@
 import express from 'express';
-import { saveChatbotSession } from '../controllers/ai.controller.js';
+import { saveChatbotSession, submitCustomTourRequest, syncChatHistory } from '../controllers/ai.controller.js';
+import { validate } from '../middleware/validation.middleware.js';
+import { contactSchemas } from '../schemas/contact.schema.js';
+import { aiSchemas } from '../schemas/ai.schema.js';
 
 const router = express.Router();
 
@@ -9,6 +12,8 @@ const router = express.Router();
  * These routes are for side-effects like saving sessions to the database.
  */
 
-router.post('/session', saveChatbotSession);
+router.post('/session', aiSchemas.saveSession, validate, saveChatbotSession);
+router.post('/submit-custom-tour', contactSchemas.customTour, validate, submitCustomTourRequest);
+router.post('/sync-history', aiSchemas.syncHistory, validate, syncChatHistory);
 
 export default router;

@@ -86,6 +86,144 @@ export const getTourMessages = async (req, res) => {
 };
 
 // ======================================================
+//    GET CHATBOT MESSAGES
+//    GET /api/chat/session/:sessionId
+//    Auth: Required
+//    ====================================================== */
+export const getChatbotMessages = async (req, res) => {
+    const { sessionId } = req.params;
+    const userId = req.user.user_id || req.user.id;
+    const userRole = req.user.role;
+
+    try {
+        // 1. Verify access to this session
+        const sessionResult = await db.query(`SELECT * FROM chatbot_session WHERE session_id = $1`, [sessionId]);
+
+        if (sessionResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+
+        const session = sessionResult.rows[0];
+
+        // Check permissions: only the tourist who started it or an admin can see it
+        if (userRole !== "admin" && session.tourist_id) {
+            // Need to link tourist_id to user_id
+            const touristRes = await db.query(`SELECT user_id FROM tourist WHERE tourist_id = $1`, [session.tourist_id]);
+            if (touristRes.rows[0]?.user_id !== userId) {
+                return res.status(403).json({ success: false, message: "Not authorized to view this chat" });
+            }
+        }
+
+        // 2. Fetch messages
+        const messagesQuery = `
+            SELECT 
+                m.id, 
+                m.session_id, 
+                m.sender_id, 
+                m.receiver_id, 
+                m.message, 
+                m.is_read, 
+                m.created_at,
+                COALESCE(t.full_name, tg.full_name, CASE WHEN m.sender_id IS NULL THEN 'AI Guide' ELSE 'Admin' END) as sender_name,
+                COALESCE(u.role, 'assistant') as sender_role
+            FROM tour_messages m
+            LEFT JOIN users u ON m.sender_id = u.user_id
+            LEFT JOIN tourist t ON u.user_id = t.user_id
+            LEFT JOIN tour_guide tg ON u.user_id = tg.user_id
+            WHERE m.session_id = $1
+            ORDER BY m.created_at ASC
+        `;
+
+        const messagesResult = await db.query(messagesQuery, [sessionId]);
+
+        return res.status(200).json({
+            success: true,
+            messages: messagesResult.rows
+        });
+
+    } catch (error) {
+        console.error("Error in getChatbotMessages:", error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+// ======================================================
+//    SEND CHATBOT MESSAGE
+//    POST /api/chat/session/:sessionId
+//    Auth: Required
+//    ====================================================== */
+export const sendChatbotMessage = async (req, res) => {
+    const { sessionId } = req.params;
+    const { message } = req.body;
+    const senderId = req.user.user_id || req.user.id;
+    const userRole = req.user.role;
+
+    if (!message || message.trim() === '') {
+        return res.status(400).json({ success: false, message: "Message cannot be empty" });
+    }
+
+    try {
+        // 1. Verify session
+        const sessionResult = await db.query(`SELECT * FROM chatbot_session WHERE session_id = $1`, [sessionId]);
+        if (sessionResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Session not found" });
+        }
+        const session = sessionResult.rows[0];
+
+        // 2. Determine receiver
+        let receiverId = null;
+        if (userRole === 'admin') {
+            // Admin replying to a session - receiver is the tourist
+            if (session.tourist_id) {
+                const touristRes = await db.query(`SELECT user_id FROM tourist WHERE tourist_id = $1`, [session.tourist_id]);
+                receiverId = touristRes.rows[0]?.user_id || null;
+            }
+        } else {
+            // Tourist (or other role) sending to admin
+            // We'll leave receiverId as null or a generic admin ID if one exists
+            // For now, null is fine as admins see all messages
+        }
+
+        // 3. Insert message
+        const insertQuery = `
+            INSERT INTO tour_messages (session_id, sender_id, receiver_id, message)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `;
+
+        const insertResult = await db.query(insertQuery, [sessionId, senderId, receiverId, message]);
+        const newMessage = insertResult.rows[0];
+
+        // Fetch sender info
+        const senderQuery = `
+            SELECT 
+                u.role,
+                COALESCE(t.full_name, tg.full_name, 'Admin') as full_name
+            FROM users u 
+            LEFT JOIN tourist t ON u.user_id = t.user_id
+            LEFT JOIN tour_guide tg ON u.user_id = tg.user_id
+            WHERE u.user_id = $1
+        `;
+        const senderInfoResult = await db.query(senderQuery, [senderId]);
+
+        if (senderInfoResult.rows.length > 0) {
+            newMessage.sender_name = senderInfoResult.rows[0].full_name;
+            newMessage.sender_role = senderInfoResult.rows[0].role;
+        }
+
+        return res.status(201).json({
+            success: true,
+            message: "Message sent successfully",
+            data: newMessage
+        });
+
+    } catch (error) {
+        console.error("Error in sendChatbotMessage:", error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+// ======================================================
 //    SEND TOUR MESSAGE
 //    POST /api/chat/:bookingId
 //    Auth: Required (Tourist or Assigned Guide)

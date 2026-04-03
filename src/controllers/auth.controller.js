@@ -248,21 +248,33 @@ export const login = async (req, res) => {
 
     // Normalize email
     const normalizedEmail = email.trim().toLowerCase();
+    console.log(`🔍 [LOGIN] Attempting login for: ${normalizedEmail}`);
 
-    const result = await db.query(
-      `SELECT user_id, email, password_hash, role, status, email_verified
-       FROM users
-       WHERE email = $1`,
-      [normalizedEmail]
-    );
+    let result;
+    try {
+      result = await db.query(
+        `SELECT user_id, email, password_hash, role, status, email_verified
+         FROM users
+         WHERE email = $1`,
+        [normalizedEmail]
+      );
+    } catch (dbErr) {
+      console.error("❌ [LOGIN] User lookup query failed:", dbErr.message);
+      return res.status(503).json({
+        message: "Database service unavailable. Please try again shortly.",
+        error: dbErr.message
+      });
+    }
 
     if (result.rows.length === 0) {
+      console.warn(`⚠️ [LOGIN] User not found: ${normalizedEmail}`);
       return res.status(401).json({
         message: "Invalid credentials"
       });
     }
 
     const user = result.rows[0];
+    console.log(`✅ [LOGIN] User found, role: ${user.role}, status: ${user.status}`);
 
     /* --------------------------------------------------
        PASSWORD CHECK (FIRST)
@@ -271,74 +283,6 @@ export const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         message: "Invalid credentials"
-      });
-    }
-
-    /* --------------------------------------------------
-       STRICT ROLE VALIDATION - Verify role exists in corresponding table
-       -------------------------------------------------- */
-    let roleValidated = false;
-
-    if (user.role === "tourist") {
-      const touristCheck = await db.query(
-        `SELECT user_id FROM tourist WHERE user_id = $1`,
-        [user.user_id]
-      );
-      if (touristCheck.rows.length === 0) {
-        return res.status(403).json({
-          message: "Invalid account configuration. Tourist profile not found."
-        });
-      }
-      roleValidated = true;
-    } else if (user.role === "guide") {
-      const guideCheck = await db.query(
-        `SELECT user_id FROM tour_guide WHERE user_id = $1`,
-        [user.user_id]
-      );
-      if (guideCheck.rows.length === 0) {
-        return res.status(403).json({
-          message: "Invalid account configuration. Tour guide profile not found."
-        });
-      }
-      roleValidated = true;
-    } else if (user.role === "admin") {
-      const adminCheck = await db.query(
-        `SELECT user_id FROM admin WHERE user_id = $1`,
-        [user.user_id]
-      );
-      if (adminCheck.rows.length === 0) {
-        return res.status(403).json({
-          message: "Invalid account configuration. Admin profile not found."
-        });
-      }
-      roleValidated = true;
-    }
-
-    if (!roleValidated) {
-      return res.status(403).json({
-        message: "Invalid role configuration"
-      });
-    }
-
-    /* --------------------------------------------------
-       ROLE-BASED STATUS RULES
-       -------------------------------------------------- */
-
-    // Guide: must be approved (status = active) OR allow rejected for resubmission
-    if (user.role === "guide" && user.status === "pending") {
-      return res.status(403).json({
-        message: "Guide account pending admin approval. Please wait for verification."
-      });
-    }
-
-    // Allow rejected guides to login (for document resubmission)
-    // but flag them so frontend can redirect to resubmission page
-    const isRejected = user.status === "rejected";
-
-    // Block other non-active statuses (except rejected guides)
-    if (user.status !== "active" && !isRejected) {
-      return res.status(403).json({
-        message: "Account is not active"
       });
     }
 
@@ -352,28 +296,82 @@ export const login = async (req, res) => {
 
     let profile = null;
 
-    // Fetch profile based on role
+    /* --------------------------------------------------
+       STRICT ROLE VALIDATION & PROFILE FETCHING
+       -------------------------------------------------- */
     if (user.role === "tourist") {
       const profileResult = await db.query(
-        `SELECT full_name, country, phone
-         FROM tourist
-         WHERE user_id = $1`,
+        `SELECT full_name, country, phone, profile_photo FROM tourist WHERE user_id = $1`,
         [user.user_id]
       );
-      profile = profileResult.rows[0] || null;
+      if (profileResult.rows.length === 0) {
+        return res.status(403).json({
+          message: "Invalid account configuration. Tourist profile not found."
+        });
+      }
+      profile = profileResult.rows[0];
     } else if (user.role === "guide") {
       const profileResult = await db.query(
-        `SELECT full_name, contact_number
-         FROM tour_guide
-         WHERE user_id = $1`,
+        `SELECT guide_id, full_name, contact_number, profile_photo FROM tour_guide WHERE user_id = $1`,
         [user.user_id]
       );
-      profile = profileResult.rows[0] || null;
+      if (profileResult.rows.length === 0) {
+        return res.status(403).json({
+          message: "Invalid account configuration. Tour guide profile not found."
+        });
+      }
+      profile = profileResult.rows[0];
     } else if (user.role === "admin") {
-      // Admin doesn't have a profile table, use email as name
-      profile = {
-        full_name: "Administrator"
-      };
+      // Admins might not have a record in the 'admin' table if it's a legacy account
+      // so we try to get the photo but don't fail if the table/record is missing
+      try {
+        const adminResult = await db.query(
+          `SELECT profile_photo FROM admin WHERE user_id = $1`,
+          [user.user_id]
+        );
+        profile = {
+          full_name: "Administrator",
+          profile_photo: adminResult.rows[0]?.profile_photo || null
+        };
+      } catch (err) {
+        console.warn("⚠️ Admin table query failed (optional for login):", err.message);
+        profile = { full_name: "Administrator", profile_photo: null };
+      }
+    } else {
+      return res.status(403).json({
+        message: "Invalid role configuration"
+      });
+    }
+
+    /* --------------------------------------------------
+       ROLE-BASED STATUS RULES
+       -------------------------------------------------- */
+
+    // Allow pending and rejected guides to login (for status tracking and document resubmission)
+    const isPending = user.status === "pending";
+    const isRejected = user.status === "rejected";
+
+    // Block only if status is something else (e.g., suspended, deleted)
+    // and they are not a tourist (tourists are active by default after verification)
+    if (user.status !== "active" && !isPending && !isRejected) {
+      return res.status(403).json({
+        message: `Account is ${user.status}. Please contact support.`
+      });
+    }
+
+    // Enforce email verification (Admins are exempt as legacy accounts may lack this)
+    if (user.role !== "admin" && user.email_verified === false) {
+      return res.status(403).json({
+        message: "Please verify your email address before logging in.",
+        requiresVerification: true
+      });
+    }
+
+    // Check if a guide has uploaded any documents
+    let hasUploadedDocuments = false;
+    if (user.role === "guide" && profile.guide_id) {
+      const docsRes = await db.query('SELECT 1 FROM guide_documents WHERE guide_id = $1 LIMIT 1', [profile.guide_id]);
+      hasUploadedDocuments = docsRes.rows.length > 0;
     }
 
     res.json({
@@ -389,15 +387,18 @@ export const login = async (req, res) => {
         name: profile?.full_name || "User",
         country: profile?.country || null,
         phone: profile?.phone || profile?.contact_number || null,
-        isRejected: isRejected, // Flag for frontend to handle
-        canResubmit: isRejected // Allow resubmission for rejected guides
+        profile_photo: profile?.profile_photo || null,
+        isPending: isPending,
+        isRejected: isRejected,
+        canResubmit: isRejected,
+        hasUploadedDocuments: hasUploadedDocuments
       }
     });
 
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("Login fatal error:", err);
     res.status(500).json({
-      message: "Login failed"
+      message: "Login failed due to a server error"
     });
   }
 };

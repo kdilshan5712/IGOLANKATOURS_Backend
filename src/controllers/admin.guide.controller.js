@@ -5,7 +5,7 @@ import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 export const getAllGuides = async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT tg.guide_id, tg.full_name, u.email, tg.approved, u.status,
+      SELECT tg.guide_id, tg.full_name, u.email, tg.approved, u.status, tg.commission_rate,
         (SELECT COUNT(*) FROM guide_documents gd WHERE gd.guide_id = tg.guide_id) AS document_count,
         (SELECT COUNT(*) FROM guide_documents gd WHERE gd.guide_id = tg.guide_id AND gd.verified = false) AS pending_documents_count
       FROM tour_guide tg
@@ -28,7 +28,8 @@ export const getAllGuidesWithDocuments = async (req, res) => {
         tg.guide_id, 
         tg.full_name, 
         tg.contact_number,
-        tg.approved, 
+        tg.approved,
+        tg.commission_rate,
         u.email, 
         u.status,
         u.user_id,
@@ -64,6 +65,7 @@ export const getGuideById = async (req, res) => {
         tg.full_name, 
         tg.contact_number,
         tg.approved,
+        tg.commission_rate,
         tg.rejection_reason,
         tg.rejected_at,
         tg.approved_at,
@@ -343,5 +345,34 @@ export const getApprovedGuides = async (req, res) => {
       message: "Failed to fetch approved guides",
       error: err.message
     });
+  }
+};
+
+// Update guide commission rate
+export const updateGuideCommission = async (req, res) => {
+  try {
+    const { guideId } = req.params;
+    const { commissionRate } = req.body;
+
+    if (commissionRate === undefined || commissionRate < 0 || commissionRate > 1) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid commission rate. Must be between 0 and 1." 
+      });
+    }
+
+    await db.query(
+      `UPDATE tour_guide SET commission_rate = $1 WHERE guide_id = $2`,
+      [commissionRate, guideId]
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Commission rate updated successfully",
+      commission_rate: commissionRate
+    });
+  } catch (err) {
+    console.error("[ADMIN] updateGuideCommission error:", err);
+    res.status(500).json({ success: false, message: "Failed to update commission rate" });
   }
 };

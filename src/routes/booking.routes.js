@@ -4,21 +4,41 @@ import {
   createBooking,
   getMyBookings,
   cancelBooking,
-  downloadInvoice
+  downloadInvoice,
+  convertCustomToBooking,
+  acceptAndBookCustomTour
 } from "../controllers/booking.controller.js";
+import { validate } from "../middleware/validation.middleware.js";
+import { bookingSchemas } from "../schemas/booking.schema.js";
 
 const router = express.Router();
 
-/**
- * All booking routes require authentication (tourist only)
- */
+// --- Public / Private Mixed (Auth Required) ---
 
 // Create new booking (tourist only)
 router.post(
   "/",
   authenticate,
   authorize("tourist"),
+  bookingSchemas.create,
+  validate,
   createBooking
+);
+
+// Convert Custom Request to Booking (admin only)
+router.post(
+  "/convert/:sessionId",
+  authenticate,
+  authorize("admin"),
+  convertCustomToBooking
+);
+
+// Accept and pay for custom approved tour (tourist)
+router.post(
+  "/accept-custom/:sessionId",
+  authenticate,
+  authorize("tourist"),
+  acceptAndBookCustomTour
 );
 
 // Get logged-in user's bookings (tourist only)

@@ -4,6 +4,7 @@ import upload from "../middleware/upload.middleware.js";
 import {
   getUserProfile,
   getUserBookings,
+  getUserCustomTours,
   uploadProfilePhoto,
   deleteProfilePhoto
 } from "../controllers/user.controller.js";
@@ -19,6 +20,9 @@ router.get("/me", getUserProfile);
 
 // GET /api/user/bookings - Get all bookings for logged-in user
 router.get("/bookings", getUserBookings);
+
+// GET /api/user/custom-tours - Get all custom tour requests for logged-in user
+router.get("/custom-tours", getUserCustomTours);
 
 // POST /api/user/profile-photo - Upload tourist profile photo
 router.post(

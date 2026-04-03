@@ -88,17 +88,39 @@ export const authorize = (...allowedRoles) => {
     }
 
     try {
-      // Add timeout for database query
+      // Add timeout for database query - increased to 15s for better resilience against DB instability/cold starts
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Database timeout')), 5000)
+        setTimeout(() => reject(new Error('Database timeout')), 15000)
       );
 
-      // Verify role in database matches JWT and profile exists
+      // Verify role and profile existence in a SINGLE query for performance and reliability
+      let query;
+      let params = [req.user.user_id];
+
+      if (req.user.role === "tourist") {
+        query = `
+          SELECT u.role, u.status, t.user_id as profile_id 
+          FROM users u 
+          LEFT JOIN tourist t ON u.user_id = t.user_id 
+          WHERE u.user_id = $1`;
+      } else if (req.user.role === "guide") {
+        query = `
+          SELECT u.role, u.status, g.user_id as profile_id 
+          FROM users u 
+          LEFT JOIN tour_guide g ON u.user_id = g.user_id 
+          WHERE u.user_id = $1`;
+      } else if (req.user.role === "admin") {
+        query = `
+          SELECT u.role, u.status, a.user_id as profile_id 
+          FROM users u 
+          LEFT JOIN admin a ON u.user_id = a.user_id 
+          WHERE u.user_id = $1`;
+      } else {
+        query = `SELECT role, status FROM users WHERE user_id = $1`;
+      }
+
       const userResult = await Promise.race([
-        db.query(
-          `SELECT role, status FROM users WHERE user_id = $1`,
-          [req.user.user_id]
-        ),
+        db.query(query, params),
         timeoutPromise
       ]);
 
@@ -112,53 +134,25 @@ export const authorize = (...allowedRoles) => {
 
       // Verify role in database matches JWT role
       if (dbUser.role !== req.user.role) {
+        console.warn(`🔐 Role mismatch: JWT(${req.user.role}) vs DB(${dbUser.role})`);
         return res.status(403).json({
           message: "Role mismatch detected. Please log in again."
         });
       }
 
-      // Verify user account is active
-      if (dbUser.status !== "active") {
+      // Verify user account is active - allow pending/rejected users for profile/status access
+      if (dbUser.status !== "active" && dbUser.status !== "pending" && dbUser.status !== "rejected") {
         return res.status(403).json({
-          message: "Account is not active"
+          message: `Account is ${dbUser.status}. Please contact support.`
         });
       }
 
-      // Verify profile exists in corresponding role table
-      let profileExists = false;
-
-      if (req.user.role === "tourist") {
-        const profileCheck = await Promise.race([
-          db.query(
-            `SELECT user_id FROM tourist WHERE user_id = $1`,
-            [req.user.user_id]
-          ),
-          timeoutPromise
-        ]);
-        profileExists = profileCheck.rows.length > 0;
-      } else if (req.user.role === "guide") {
-        const profileCheck = await Promise.race([
-          db.query(
-            `SELECT user_id FROM tour_guide WHERE user_id = $1`,
-            [req.user.user_id]
-          ),
-          timeoutPromise
-        ]);
-        profileExists = profileCheck.rows.length > 0;
-      } else if (req.user.role === "admin") {
-        const profileCheck = await Promise.race([
-          db.query(
-            `SELECT user_id FROM admin WHERE user_id = $1`,
-            [req.user.user_id]
-          ),
-          timeoutPromise
-        ]);
-        profileExists = profileCheck.rows.length > 0;
-      }
-
-      if (!profileExists) {
+      // Verify profile existence (except for custom roles that might not need one)
+      // Note: for admin, we're more lenient as some might be legacy
+      const profileRequired = ["tourist", "guide"].includes(req.user.role);
+      if (profileRequired && !dbUser.profile_id) {
         return res.status(403).json({
-          message: "Invalid account configuration. Profile not found."
+          message: `Invalid account configuration. ${req.user.role} profile not found.`
         });
       }
 

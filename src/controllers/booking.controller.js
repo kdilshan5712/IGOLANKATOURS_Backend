@@ -436,3 +436,215 @@ export const downloadInvoice = async (req, res) => {
     });
   }
 };
+
+/**
+ * CONVERT CUSTOM REQUEST TO BOOKING
+ * POST /api/bookings/convert/:sessionId
+ * Auth: Required (Admin only)
+ */
+export const convertCustomToBooking = async (req, res) => {
+  const { sessionId } = req.params;
+  const { final_price, travel_date, adults, children, notes } = req.body;
+  const admin_id = req.user.user_id || req.user.id;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: "Only admins can convert requests to bookings" });
+  }
+
+  const client = await db.pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Fetch the session
+    const sessionRes = await client.query(`
+      SELECT cs.*, COALESCE(cm.email, u.email) as user_email, u.user_id 
+      FROM chatbot_session cs
+      LEFT JOIN contact_messages cm ON cs.session_id = cm.session_id
+      LEFT JOIN users u ON cs.tourist_id = u.user_id
+      WHERE cs.session_id = $1
+    `, [sessionId]);
+
+    if (sessionRes.rows.length === 0) {
+      throw new Error("Session not found");
+    }
+
+    const session = sessionRes.rows[0];
+    const tourist_id = session.user_id;
+
+    if (!tourist_id) {
+       throw new Error("No registered user found for this session. The tourist must have an account.");
+    }
+
+    const prefs = session.preferences || {};
+    const destination = prefs.destination || "Custom Tour";
+    const duration = prefs.duration || "Custom duration";
+
+    // 2. Create a custom package
+    const packageInsertResult = await client.query(`
+      INSERT INTO tour_packages 
+        (name, description, base_price, duration, category, is_visible, image, highlights, included, not_included)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING package_id
+    `, [
+      `Custom: ${destination}`,
+      `Custom tour generated from chatbot session ${sessionId}. ${notes || ''}`,
+      final_price,
+      duration,
+      'Custom',
+      false, // Hide from public list
+      'https://images.unsplash.com/photo-1589553416260-f586c8f1514f?q=80&w=2070', // Default image
+      prefs.itinerary ? JSON.stringify(prefs.itinerary) : '[]',
+      '[]',
+      '[]'
+    ]);
+
+    const package_id = packageInsertResult.rows[0].package_id;
+
+    // 3. Create the booking
+    const year = new Date().getFullYear();
+    const uniqueSuffix = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const booking_reference = `BOOK-CUST-${year}-${uniqueSuffix}`;
+
+    const bookingInsertResult = await client.query(`
+      INSERT INTO bookings 
+        (user_id, package_id, travel_date, travelers, total_price, deposit_amount, balance_amount, status, payment_status, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      RETURNING *
+    `, [
+      tourist_id,
+      package_id,
+      travel_date || new Date(),
+      (parseInt(adults) || 1) + (parseInt(children) || 0),
+      final_price,
+      final_price, // For custom, maybe require full payment or half. Let's say full for now.
+      0,
+      'pending',
+      'pending'
+    ]);
+
+    // 4. Update session status
+    await client.query(`
+      UPDATE chatbot_session 
+      SET status = 'booked' 
+      WHERE session_id = $1
+    `, [sessionId]);
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      success: true,
+      message: "Custom request converted to booking successfully",
+      booking: bookingInsertResult.rows[0]
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("convertCustomToBooking error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * ACCEPT AND BOOK CUSTOM TOUR (Tourist)
+ * POST /api/bookings/accept-custom/:sessionId
+ * Auth: Required (Tourist only)
+ */
+export const acceptAndBookCustomTour = async (req, res) => {
+  const { sessionId } = req.params;
+  const user_id = req.user.user_id;
+
+  const client = await db.pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Fetch and verify the session
+    const sessionRes = await client.query(`
+      SELECT * FROM chatbot_session 
+      WHERE session_id = $1 AND tourist_id = $2
+    `, [sessionId, user_id]);
+
+    if (sessionRes.rows.length === 0) {
+      throw new Error("Custom tour request not found or does not belong to you.");
+    }
+
+    const session = sessionRes.rows[0];
+
+    // 2. Safety check: must be approved by admin
+    if (session.status !== 'approved') {
+      throw new Error(`This tour cannot be booked yet. Current status: ${session.status}`);
+    }
+
+    if (!session.admin_final_price) {
+      throw new Error("Admin has not finalized the price for this tour yet.");
+    }
+
+    // 3. Create a custom hidden package for this booking
+    const packageInsertResult = await client.query(`
+      INSERT INTO tour_packages 
+        (name, description, base_price, duration, category, is_visible, image, highlights, included, not_included)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING package_id
+    `, [
+      session.title || "Custom Approved Tour",
+      `Custom tour accepted by traveler from session ${sessionId}.`,
+      session.admin_final_price,
+      `${session.duration_days} Days`,
+      'Custom',
+      false, // Hidden
+      'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=2070', // Different default
+      session.approved_itinerary_json ? JSON.stringify(session.approved_itinerary_json) : '[]',
+      '["Dedicated Transport", "Personal Guide", "Boutique Stays"]',
+      '["International Flights", "Personal Expenses"]'
+    ]);
+
+    const package_id = packageInsertResult.rows[0].package_id;
+
+    // 4. Create the formal booking record
+    const year = new Date().getFullYear();
+    const uniqueSuffix = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const booking_reference = `BOOK-CUST-${year}-${uniqueSuffix}`;
+
+    const bookingInsertResult = await client.query(`
+      INSERT INTO bookings 
+        (user_id, package_id, travel_date, travelers, total_price, deposit_amount, balance_amount, status, payment_status, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      RETURNING *
+    `, [
+      user_id,
+      package_id,
+      session.travel_date || new Date(), // Use fallback if not set during AI chat
+      session.traveler_count || 1,
+      session.admin_final_price,
+      session.admin_final_price, // For now, custom tours require full payment to proceed
+      0,
+      'pending_payment',
+      'pending'
+    ]);
+
+    // 5. Update session status to link it to the finished booking flow
+    await client.query(`
+      UPDATE chatbot_session 
+      SET status = 'booked' 
+      WHERE session_id = $1
+    `, [sessionId]);
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      success: true,
+      message: "Tour accepted! Proceeding to payment.",
+      booking: bookingInsertResult.rows[0]
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("acceptAndBookCustomTour error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    client.release();
+  }
+};

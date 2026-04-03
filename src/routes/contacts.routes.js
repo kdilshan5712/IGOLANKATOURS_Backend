@@ -8,6 +8,8 @@ import {
   deleteContactMessage,
   markMessageAsRead
 } from '../controllers/contact.controller.js';
+import { validate } from '../middleware/validation.middleware.js';
+import { contactSchemas } from '../schemas/contact.schema.js';
 
 const router = express.Router();
 
@@ -16,7 +18,7 @@ const router = express.Router();
  */
 
 // POST submit contact form message (public)
-router.post('/', submitContactMessage);
+router.post('/', contactSchemas.submit, validate, submitContactMessage);
 
 /**
  * Admin Routes - Admin management and response

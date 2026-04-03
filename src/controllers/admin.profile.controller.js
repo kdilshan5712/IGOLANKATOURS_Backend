@@ -23,8 +23,10 @@ export const getAdminProfile = async (req, res) => {
           u.role,
           u.created_at,
           u.status,
-          u.email_verified
+          u.email_verified,
+          a.profile_photo
         FROM users u
+        LEFT JOIN admin a ON u.user_id = a.user_id
         WHERE u.user_id = $1 AND u.role = 'admin'`,
         [user_id]
       ),
@@ -47,6 +49,7 @@ export const getAdminProfile = async (req, res) => {
       status: profile.status,
       email_verified: profile.email_verified,
       created_at: profile.created_at,
+      profile_photo: profile.profile_photo || null,
       full_name: "Administrator", // Admins don't have separate profile table
       first_name: "Admin",
       last_name: ""

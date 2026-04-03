@@ -18,7 +18,8 @@ export const getUserProfile = async (req, res) => {
         u.created_at,
         t.full_name,
         t.phone,
-        t.country
+        t.country,
+        t.profile_photo
       FROM users u
       LEFT JOIN tourist t ON u.user_id = t.user_id
       WHERE u.user_id = $1`,
@@ -103,6 +104,35 @@ export const getUserBookings = async (req, res) => {
     console.error("Error fetching bookings:", error);
     return res.status(500).json({
       message: "Failed to fetch bookings",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * GET USER CUSTOM TOURS
+ * GET /api/user/custom-tours
+ * Auth: Required (Tourist only)
+ */
+export const getUserCustomTours = async (req, res) => {
+  const user_id = req.user.user_id;
+
+  try {
+    const result = await db.query(
+      `SELECT * FROM chatbot_session
+       WHERE tourist_id = $1
+       ORDER BY created_at DESC`,
+      [user_id]
+    );
+
+    return res.json({
+      message: "Custom tours retrieved successfully",
+      customTours: result.rows
+    });
+  } catch (error) {
+    console.error("Error fetching custom tours:", error);
+    return res.status(500).json({
+      message: "Failed to fetch custom tours",
       error: error.message
     });
   }

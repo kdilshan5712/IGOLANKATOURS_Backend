@@ -5,9 +5,13 @@ import adminDashboardController from '../controllers/admin.dashboard.controller.
 
 const router = express.Router();
 
-router.get('/', authenticate, authorize('admin'), adminDashboardController.getDashboardMetrics);
-router.get('/recent-bookings', authenticate, authorize('admin'), adminDashboardController.getRecentBookings);
-router.get('/revenue-report', authenticate, authorize('admin'), adminDashboardController.getRevenueReport);
-router.get('/generate-report', authenticate, authorize('admin'), adminDashboardController.generateReport);
+// All routes are protected and require admin role
+router.use(authenticate, authorize('admin'));
+
+router.get('/stats', adminDashboardController.getDashboardStats);
+router.get('/notifications/counts', adminDashboardController.getNotificationCounts);
+router.get('/recent-bookings', adminDashboardController.getRecentBookings);
+router.get('/revenue-report', adminDashboardController.getRevenueReport);
+router.get('/generate-report', adminDashboardController.generateReport);
 
 export default router;

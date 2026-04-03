@@ -7,6 +7,8 @@ import {
   getPackageStats,
   calculatePackagePrice
 } from "../controllers/package.controller.js";
+import { validate } from "../middleware/validation.middleware.js";
+import { packageSchemas } from "../schemas/package.schema.js";
 
 const router = express.Router();
 
@@ -29,11 +31,11 @@ router.get("/stats", getPackageStats);
 
 // Get all packages (with optional filters)
 // GET /api/packages?category=Beach&budget=luxury&min_price=500&max_price=2000
-router.get("/", getAllPackages);
+router.get("/", packageSchemas.getAll, validate, getAllPackages);
 
 // Calculate price for a specific date and travelers
 // GET /api/packages/:id/price?date=2024-12-25&travelers=2
-router.get("/:id/price", calculatePackagePrice);
+router.get("/:id/price", packageSchemas.calculatePrice, validate, calculatePackagePrice);
 
 // Get single package by ID (MUST be last to avoid route conflicts)
 // GET /api/packages/:id

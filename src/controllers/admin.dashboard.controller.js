@@ -1,36 +1,31 @@
 
 import db from '../config/db.js';
+import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 
-// GET /api/admin/dashboard
-const getDashboardMetrics = async (req, res) => {
+/**
+ * 📊 GET /api/admin/dashboard/stats
+ * Comprehensive dashboard statistics, trends, and distributions.
+ */
+const getDashboardStats = async (req, res) => {
   try {
-    console.log('📊 [DASHBOARD] Fetching dashboard metrics...');
-
-    const [packages, bookings, reviews, users, guides, pendingGuides, messages, customRequests, revenue, avgRating] = await Promise.all([
-      db.query('SELECT COUNT(*) FROM tour_packages'),
-      db.query('SELECT COUNT(*) FROM bookings'),
-      db.query('SELECT COUNT(*) FROM reviews'),
-      db.query('SELECT COUNT(*) FROM users'),
-      db.query('SELECT COUNT(*) FROM tour_guide tg INNER JOIN users u ON tg.user_id = u.user_id WHERE tg.approved = true AND u.status = $1', ['active']),
-      db.query("SELECT COUNT(*) FROM tour_guide tg INNER JOIN users u ON tg.user_id = u.user_id WHERE tg.approved = false"),
-      db.query('SELECT COUNT(*) FROM contact_messages WHERE status = $1', ['new']),
-      db.query('SELECT COUNT(*) FROM custom_tour_requests WHERE status = $1', ['pending']),
-      db.query('SELECT COALESCE(SUM(total_price),0) FROM bookings WHERE status IN ($1, $2) AND created_at >= DATE_TRUNC(\'month\', CURRENT_DATE)', ['confirmed', 'completed']),
-      db.query('SELECT COALESCE(AVG(rating),0) FROM reviews')
-    ]);
-
-    const stats = {
-      total_packages: Number(packages.rows[0].count),
-      total_bookings: Number(bookings.rows[0].count),
-      total_reviews: Number(reviews.rows[0].count),
-      total_users: Number(users.rows[0].count),
-      total_guides: Number(guides.rows[0].count),
-      pending_guide_approvals: Number(pendingGuides.rows[0].count),
-      new_messages: Number(messages.rows[0].count),
-      pending_requests: Number(customRequests.rows[0].count),
-      monthly_revenue: Number(revenue.rows[0].coalesce || revenue.rows[0].sum || 0),
-      average_rating: Number(avgRating.rows[0].coalesce || avgRating.rows[0].avg || 0).toFixed(1)
-    };
+    const statsResult = await db.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM users WHERE role = 'tourist') as total_tourists,
+        (SELECT COUNT(*) FROM tour_guide) as total_guides,
+        (SELECT COUNT(*) FROM tour_guide WHERE approved = true) as approved_guides,
+        (SELECT COUNT(*) FROM tour_guide WHERE approved = false AND EXISTS (
+          SELECT 1 FROM users u WHERE u.user_id = tour_guide.user_id AND u.status = 'pending'
+        )) as pending_guide_approvals,
+        (SELECT COUNT(*) FROM bookings) as total_bookings,
+        (SELECT COUNT(*) FROM reviews) as total_reviews,
+        (SELECT COUNT(*) FROM reviews WHERE status = 'pending') as pending_reviews,
+        (SELECT COUNT(*) FROM tour_packages) as total_packages,
+        (SELECT COUNT(*) FROM contact_messages WHERE status = 'new') as new_messages,
+        (SELECT COUNT(*) FROM chatbot_session WHERE status = 'pending') as pending_requests,
+        (SELECT COUNT(*) FROM payout_requests WHERE status = 'pending') as pending_payouts,
+        (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE status IN ('confirmed', 'completed') AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as total_revenue
+    `);
 
     // Fetch Revenue Trends (Last 6 Months)
     const revenueTrendsResult = await db.query(`
@@ -38,7 +33,7 @@ const getDashboardMetrics = async (req, res) => {
         TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') as name,
         SUM(total_price) as revenue
       FROM bookings
-      WHERE created_at >= NOW() - INTERVAL '6 months'
+      WHERE status IN ('confirmed', 'completed') AND created_at >= NOW() - INTERVAL '6 months'
       GROUP BY DATE_TRUNC('month', created_at)
       ORDER BY DATE_TRUNC('month', created_at) ASC
     `);
@@ -64,6 +59,7 @@ const getDashboardMetrics = async (req, res) => {
       LIMIT 5
     `);
 
+    const stats = statsResult.rows[0];
     stats.revenueTrends = revenueTrendsResult.rows.map(row => ({ name: row.name, revenue: parseFloat(row.revenue) || 0 }));
     stats.bookingDistribution = bookingStatusResult.rows.map(row => ({ name: row.name, value: parseInt(row.value) || 0 }));
     stats.topPackages = topPackagesResult.rows.map(row => ({
@@ -71,197 +67,204 @@ const getDashboardMetrics = async (req, res) => {
       bookings: parseInt(row.bookings) || 0
     }));
 
-    console.log('✅ [DASHBOARD] Stats calculated:', stats);
-
     res.json({
       success: true,
-      stats
+      stats: stats
     });
   } catch (err) {
-    console.error('❌ [DASHBOARD] Failed to fetch dashboard metrics:', err);
+    console.error("getDashboardStats error:", err);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch dashboard metrics',
-      details: err.message
+      message: "Failed to fetch dashboard stats"
     });
   }
 };
 
-// GET /api/admin/dashboard/recent-bookings
+/**
+ * 🔔 GET /api/admin/dashboard/notifications/counts
+ * Get counts of items requiring urgent attention.
+ */
+const getNotificationCounts = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM contact_messages WHERE status = 'new') as unread_messages,
+        (SELECT COUNT(*) FROM payout_requests WHERE status = 'pending') as pending_payouts,
+        (SELECT COUNT(*) FROM tour_guide tg INNER JOIN users u ON tg.user_id = u.user_id WHERE tg.approved = false AND u.status = 'pending') as pending_guides,
+        (SELECT COUNT(*) FROM chatbot_session WHERE status = 'pending' OR status = 'pending_approval') as pending_custom_tours,
+        (SELECT COUNT(*) FROM reviews WHERE status = 'pending') as pending_reviews
+    `);
+
+    res.json({
+      success: true,
+      counts: result.rows[0]
+    });
+  } catch (err) {
+    console.error("getNotificationCounts error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch notification counts"
+    });
+  }
+};
+
+/**
+ * 📅 GET /api/admin/dashboard/recent-bookings
+ */
 const getRecentBookings = async (req, res) => {
   try {
-    console.log('📅 [DASHBOARD] Fetching recent bookings...');
+    const limit = req.query.limit || 10;
 
     const result = await db.query(`
       SELECT 
         b.booking_id,
-        b.booking_reference,
         b.travel_date,
         b.total_price,
         b.status,
         b.created_at,
-        b.assigned_guide_id,
+        p.name as package_name,
         u.email as user_email,
-        t.full_name as tourist_name,
-        tp.name as package_name,
-        tp.package_id,
-        b.user_id,
-        b.num_people
+        t.full_name as tourist_name
       FROM bookings b
-      LEFT JOIN users u ON b.user_id = u.user_id
+      JOIN tour_packages p ON b.package_id = p.package_id
+      JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tourist t ON u.user_id = t.user_id
-      LEFT JOIN tour_packages tp ON b.package_id = tp.package_id
       ORDER BY b.created_at DESC
-      LIMIT 10
-    `);
-
-    console.log(`✅ [DASHBOARD] Found ${result.rows.length} recent bookings`);
+      LIMIT $1
+    `, [limit]);
 
     res.json({
       success: true,
       bookings: result.rows
     });
   } catch (err) {
-    console.error('❌ [DASHBOARD] Failed to fetch recent bookings:', err);
+    console.error("getRecentBookings error:", err);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch recent bookings',
-      details: err.message
+      message: "Failed to fetch recent bookings"
     });
   }
 };
 
-// GET /api/admin/dashboard/revenue-report
+// Helper to fetch revenue report data
+const fetchRevenueReportData = async (dateFrom, dateTo) => {
+  let dateFilter = '';
+  const params = [];
+  if (dateFrom && dateTo) {
+    dateFilter = 'WHERE b.created_at >= $1 AND b.created_at <= $2';
+    params.push(dateFrom, dateTo);
+  }
+
+  const summaryQuery = `
+    SELECT 
+      COALESCE(SUM(CASE WHEN b.status = 'completed' THEN b.total_price ELSE 0 END), 0) as completed_revenue,
+      COALESCE(SUM(CASE WHEN b.status = 'confirmed' THEN b.total_price ELSE 0 END), 0) as confirmed_revenue,
+      COALESCE(SUM(CASE WHEN b.status = 'cancelled' THEN b.total_price ELSE 0 END), 0) as cancelled_revenue,
+      COALESCE(SUM(b.total_price), 0) as total_revenue,
+      COUNT(*) as total_bookings,
+      COALESCE(AVG(b.total_price), 0) as avg_booking_value
+    FROM bookings b
+    ${dateFilter}
+  `;
+
+  const packageRevenueQuery = `
+    SELECT 
+      tp.name as package_name,
+      COUNT(b.booking_id) as bookings_count,
+      COALESCE(SUM(b.total_price), 0) as package_revenue,
+      COALESCE(AVG(b.total_price), 0) as avg_price
+    FROM bookings b
+    LEFT JOIN tour_packages tp ON b.package_id = tp.package_id
+    ${dateFilter}
+    GROUP BY tp.package_id, tp.name
+    ORDER BY package_revenue DESC
+  `;
+
+  const statusRevenueQuery = `
+    SELECT 
+      b.status,
+      COUNT(b.booking_id) as bookings_count,
+      COALESCE(SUM(b.total_price), 0) as status_revenue
+    FROM bookings b
+    ${dateFilter}
+    GROUP BY b.status
+    ORDER BY status_revenue DESC
+  `;
+
+  const monthlyRevenueQuery = `
+    SELECT 
+      DATE_TRUNC('month', b.created_at) as month,
+      COALESCE(SUM(b.total_price), 0) as monthly_revenue,
+      COUNT(b.booking_id) as bookings_count
+    FROM bookings b
+    ${dateFilter}
+    GROUP BY DATE_TRUNC('month', b.created_at)
+    ORDER BY month DESC
+  `;
+
+  const [summary, packageRevenue, statusRevenue, monthlyRevenue] = await Promise.all([
+    db.query(summaryQuery, params),
+    db.query(packageRevenueQuery, params),
+    db.query(statusRevenueQuery, params),
+    db.query(monthlyRevenueQuery, params)
+  ]);
+
+  return {
+    summary: {
+      total_revenue: Number(summary.rows[0].total_revenue || 0),
+      completed_revenue: Number(summary.rows[0].completed_revenue || 0),
+      confirmed_revenue: Number(summary.rows[0].confirmed_revenue || 0),
+      cancelled_revenue: Number(summary.rows[0].cancelled_revenue || 0),
+      total_bookings: Number(summary.rows[0].total_bookings || 0),
+      average_booking_value: Number(summary.rows[0].avg_booking_value || 0).toFixed(2)
+    },
+    by_package: packageRevenue.rows.map(row => ({
+      package_name: row.package_name || 'Unknown',
+      bookings_count: Number(row.bookings_count || 0),
+      revenue: Number(row.package_revenue || 0),
+      average_price: Number(row.avg_price || 0).toFixed(2)
+    })),
+    by_status: statusRevenue.rows.map(row => ({
+      status: row.status,
+      bookings_count: Number(row.bookings_count || 0),
+      revenue: Number(row.status_revenue || 0)
+    })),
+    monthly_trend: monthlyRevenue.rows.map(row => ({
+      month: row.month ? new Date(row.month).toISOString().split('T')[0] : null,
+      revenue: Number(row.monthly_revenue || 0),
+      bookings_count: Number(row.bookings_count || 0)
+    }))
+  };
+};
+
+/**
+ * 💰 GET /api/admin/dashboard/revenue-report
+ */
 const getRevenueReport = async (req, res) => {
   try {
-    console.log('💰 [REVENUE] Fetching revenue report...');
-
     const { dateFrom, dateTo } = req.query;
-
-    // Build WHERE clause for date range
-    let dateFilter = '';
-    const params = [];
-    if (dateFrom && dateTo) {
-      dateFilter = 'WHERE b.created_at >= $1 AND b.created_at <= $2';
-      params.push(dateFrom, dateTo);
-    }
-
-    // Query 1: Total revenue summary
-    const summaryQuery = `
-      SELECT 
-        COALESCE(SUM(CASE WHEN b.status = 'completed' THEN b.total_price ELSE 0 END), 0) as completed_revenue,
-        COALESCE(SUM(CASE WHEN b.status = 'confirmed' THEN b.total_price ELSE 0 END), 0) as confirmed_revenue,
-        COALESCE(SUM(CASE WHEN b.status = 'cancelled' THEN b.total_price ELSE 0 END), 0) as cancelled_revenue,
-        COALESCE(SUM(b.total_price), 0) as total_revenue,
-        COUNT(*) as total_bookings,
-        COALESCE(AVG(b.total_price), 0) as avg_booking_value
-      FROM bookings b
-      ${dateFilter}
-    `;
-
-    // Query 2: Revenue by package
-    const packageRevenueQuery = `
-      SELECT 
-        tp.name as package_name,
-        COUNT(b.booking_id) as bookings_count,
-        COALESCE(SUM(b.total_price), 0) as package_revenue,
-        COALESCE(AVG(b.total_price), 0) as avg_price
-      FROM bookings b
-      LEFT JOIN tour_packages tp ON b.package_id = tp.package_id
-      ${dateFilter}
-      GROUP BY tp.package_id, tp.name
-      ORDER BY package_revenue DESC
-    `;
-
-    // Query 3: Revenue by status
-    const statusRevenueQuery = `
-      SELECT 
-        b.status,
-        COUNT(b.booking_id) as bookings_count,
-        COALESCE(SUM(b.total_price), 0) as status_revenue
-      FROM bookings b
-      ${dateFilter}
-      GROUP BY b.status
-      ORDER BY status_revenue DESC
-    `;
-
-    // Query 4: Monthly revenue trend
-    const monthlyRevenueQuery = `
-      SELECT 
-        DATE_TRUNC('month', b.created_at) as month,
-        COALESCE(SUM(b.total_price), 0) as monthly_revenue,
-        COUNT(b.booking_id) as bookings_count
-      FROM bookings b
-      ${dateFilter}
-      GROUP BY DATE_TRUNC('month', b.created_at)
-      ORDER BY month DESC
-    `;
-
-    // Execute all queries in parallel
-    const [summary, packageRevenue, statusRevenue, monthlyRevenue] = await Promise.all([
-      db.query(summaryQuery, params),
-      db.query(packageRevenueQuery, params),
-      db.query(statusRevenueQuery, params),
-      db.query(monthlyRevenueQuery, params)
-    ]);
-
-    const reportData = {
-      summary: {
-        total_revenue: Number(summary.rows[0].total_revenue || 0),
-        completed_revenue: Number(summary.rows[0].completed_revenue || 0),
-        confirmed_revenue: Number(summary.rows[0].confirmed_revenue || 0),
-        cancelled_revenue: Number(summary.rows[0].cancelled_revenue || 0),
-        total_bookings: Number(summary.rows[0].total_bookings || 0),
-        average_booking_value: Number(summary.rows[0].avg_booking_value || 0).toFixed(2)
-      },
-      by_package: packageRevenue.rows.map(row => ({
-        package_name: row.package_name || 'Unknown',
-        bookings_count: Number(row.bookings_count || 0),
-        revenue: Number(row.package_revenue || 0),
-        average_price: Number(row.avg_price || 0).toFixed(2)
-      })),
-      by_status: statusRevenue.rows.map(row => ({
-        status: row.status,
-        bookings_count: Number(row.bookings_count || 0),
-        revenue: Number(row.status_revenue || 0)
-      })),
-      monthly_trend: monthlyRevenue.rows.map(row => ({
-        month: row.month ? new Date(row.month).toISOString().split('T')[0] : null,
-        revenue: Number(row.monthly_revenue || 0),
-        bookings_count: Number(row.bookings_count || 0)
-      }))
-    };
-
-    console.log('✅ [REVENUE] Report generated:', reportData.summary);
-
-    res.json({
-      success: true,
-      report: reportData
-    });
+    const reportData = await fetchRevenueReportData(dateFrom, dateTo);
+    res.json({ success: true, report: reportData });
   } catch (err) {
-    console.error('❌ [REVENUE] Failed to fetch revenue report:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch revenue report',
-      details: err.message
-    });
+    console.error('getRevenueReport error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch revenue report' });
   }
 };
 
-// GET /api/admin/dashboard/generate-report
+/**
+ * 📊 GET /api/admin/dashboard/generate-report
+ */
 const generateReport = async (req, res) => {
   try {
     const { type, format, dateFrom, dateTo } = req.query;
-    console.log(`📊 [REPORT] Generating ${type} report in ${format} format...`);
-
-    // Dynamic import for report generator
     const {
       generateBookingReportPDF,
       generateBookingReportCSV,
-      generateUserReportCSV
+      generateUserReportCSV,
+      generateRevenueReportPDF,
+      generateRevenueReportCSV
     } = await import('../utils/reportGenerator.js');
 
-    // Build date filter
     let dateFilter = '';
     const params = [];
     if (dateFrom && dateTo) {
@@ -270,7 +273,6 @@ const generateReport = async (req, res) => {
     }
 
     if (type === 'booking') {
-      // ── 1. Fetch data first so SQL errors are caught before streaming ──
       const bookingQuery = `
         SELECT b.*, u.email as user_email, t.full_name as tourist_name, tp.name as package_name
         FROM bookings b
@@ -281,15 +283,9 @@ const generateReport = async (req, res) => {
         ORDER BY b.created_at DESC
       `;
       const bookingResult = await db.query(bookingQuery, params);
-
-      // ── 2. Stream (only after all DB work succeeds) ──
-      if (format === 'pdf') {
-        await generateBookingReportPDF(bookingResult.rows, res);
-      } else {
-        await generateBookingReportCSV(bookingResult.rows, res);
-      }
+      if (format === 'pdf') await generateBookingReportPDF(bookingResult.rows, res);
+      else await generateBookingReportCSV(bookingResult.rows, res);
     } else if (type === 'user') {
-      // ── 1. Fetch data first ──
       const userQuery = `
         SELECT u.*, COALESCE(t.full_name, tg.full_name) as full_name
         FROM users u
@@ -299,29 +295,27 @@ const generateReport = async (req, res) => {
         ORDER BY u.created_at DESC
       `;
       const userResult = await db.query(userQuery, params);
-
-      // ── 2. Always CSV for users (PDF not supported) ──
       await generateUserReportCSV(userResult.rows, res);
+    } else if (type === 'revenue') {
+      const reportData = await fetchRevenueReportData(dateFrom, dateTo);
+      if (format === 'pdf') await generateRevenueReportPDF(reportData, res);
+      else await generateRevenueReportCSV(reportData, res);
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid report type. Must be booking or user.' });
+      return res.status(400).json({ success: false, message: 'Invalid report type' });
     }
-
   } catch (err) {
-    console.error('❌ [REPORT] Failed to generate report:', err.message);
-    // Only send error JSON if headers haven't been sent yet (i.e. streaming hasn't started)
+    console.error('generateReport error:', err.message);
     if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        message: 'Failed to generate report',
-        details: err.message
-      });
+      res.status(500).json({ success: false, message: 'Failed to generate report' });
     }
   }
 };
 
 export default {
-  getDashboardMetrics,
+  getDashboardStats,
+  getNotificationCounts,
   getRecentBookings,
   getRevenueReport,
   generateReport
 };
+

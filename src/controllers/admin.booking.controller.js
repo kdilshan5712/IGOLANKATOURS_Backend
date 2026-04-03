@@ -79,13 +79,32 @@ export const updateBookingStatus = async (req, res) => {
       });
     }
 
+    let commissionAmount = null;
+
+    // If completing, calculate commission based on guide's rate
+    if (status === 'completed') {
+      const bookingInfo = await db.query(
+        `SELECT b.total_price, tg.commission_rate 
+         FROM bookings b
+         JOIN tour_guide tg ON b.assigned_guide_id = tg.guide_id
+         WHERE b.booking_id = $1`,
+        [bookingId]
+      );
+
+      if (bookingInfo.rows.length > 0) {
+        const { total_price, commission_rate } = bookingInfo.rows[0];
+        commissionAmount = total_price * (commission_rate || 0.10);
+      }
+    }
+
     const result = await db.query(
       `UPDATE bookings 
        SET status = $1, 
+           commission_amount = COALESCE($2, commission_amount),
            updated_at = CURRENT_TIMESTAMP
-       WHERE booking_id = $2
+       WHERE booking_id = $3
        RETURNING *`,
-      [status, bookingId]
+      [status, commissionAmount, bookingId]
     );
 
     if (result.rows.length === 0) {

@@ -28,8 +28,13 @@ export const getAllGalleryImages = async (req, res) => {
         g.status,
         g.created_at,
         g.updated_at,
+        g.uploaded_by,
+        u.email as uploaded_by_email,
+        a.full_name as uploaded_by_name,
         COUNT(*) OVER() as total_count
       FROM gallery g
+      LEFT JOIN users u ON g.uploaded_by = u.user_id
+      LEFT JOIN "admin" a ON g.uploaded_by = a.user_id
       WHERE 1=1
     `;
 
@@ -183,16 +188,18 @@ export const uploadGalleryImage = async (req, res) => {
         category,
         status,
         display_order,
+        uploaded_by,
         created_at,
         updated_at
       )
       VALUES ($1, $2, $3, $4, 'active', 
         (SELECT COALESCE(MAX(display_order), 0) + 1 FROM gallery),
+        $5,
         NOW(),
         NOW()
       )
       RETURNING *
-    `, [imageUrl, title, description || null, category]);
+    `, [imageUrl, title, description || null, category, req.user?.user_id]);
 
     const galleryImage = result.rows[0];
 

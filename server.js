@@ -31,6 +31,7 @@ import chatRoutes from "./src/routes/chat.routes.js";
 import wishlistRoutes from "./src/routes/wishlist.routes.js";
 import faqRoutes from "./src/routes/faq.routes.js";
 import aiRoutes from "./src/routes/ai.routes.js";
+import galleryRoutes from "./src/routes/gallery.routes.js";
 
 console.log("🔄 [SERVER] Routes loaded - Version 4.0 (Security Hardened + AI Agent)");
 
@@ -41,12 +42,31 @@ const app = express();
 // 1. HTTP Security Headers (XSS, clickjacking, MIME sniffing, etc.)
 app.use(helmet({
   crossOriginEmbedderPolicy: false, // Allow embeds (e.g., maps on frontend)
-  contentSecurityPolicy: false,     // Managed by frontend instead
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "https://apis.google.com"], // Add any trusted external scripts here
+      "img-src": ["'self'", "data:", "https://*.supabase.co", "https://*.stripe.com", "https://*.google.com"],
+      "connect-src": ["'self'", "https://*.supabase.co", "https://*.stripe.com", "http://localhost:8000"],
+    },
+  },
+  dnsPrefetchControl: { allow: false },
+  frameguard: { action: "deny" },
+  hidePoweredBy: true,
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  ieNoOpen: true,
+  noSniff: true,
+  originAgentCluster: true,
+  permittedCrossDomainPolicies: { permittedPolicies: "none" },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  xssFilter: true,
 }));
 
 // 2. Restrict CORS to the known frontend origin
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
+  "http://localhost:5174", // alternate Vite port
+  "http://localhost:5175", // alternate Vite port
   "http://localhost:3000", // dev fallback
 ];
 app.use(cors({
@@ -184,7 +204,6 @@ app.use("/api/destinations", destinationRoutes);
 app.use("/api/chat", chatRoutes);
 
 // Gallery routes (public)
-import galleryRoutes from "./src/routes/gallery.routes.js";
 app.use("/api/gallery", galleryRoutes);
 
 // Wishlist routes (tourist authenticated)

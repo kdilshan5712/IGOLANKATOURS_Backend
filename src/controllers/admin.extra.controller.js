@@ -588,15 +588,14 @@ export const getCustomTourRequests = async (req, res) => {
   try {
     const result = await db.query(`
       SELECT 
-        cs.session_id,
-        cs.tourist_id,
-        cs.preferences,
-        cs.recommendations,
-        cs.created_at,
-        u.email as user_email,
-        t.full_name as tourist_name,
-        t.phone as tourist_phone
+        cs.*,
+        COALESCE(cm.email, u.email) as user_email,
+        COALESCE(cm.name, t.full_name) as tourist_name,
+        COALESCE(cm.phone, t.phone) as tourist_phone,
+        cm.status as contact_status,
+        cm.message as contact_message
       FROM chatbot_session cs
+      LEFT JOIN contact_messages cm ON cs.session_id = cm.session_id
       LEFT JOIN tourist t ON cs.tourist_id = t.tourist_id
       LEFT JOIN users u ON t.user_id = u.user_id
       ORDER BY cs.created_at DESC
@@ -619,14 +618,44 @@ export const getCustomTourRequests = async (req, res) => {
 export const updateCustomTourStatus = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const { recommendations } = req.body;
+    const { 
+      status, recommendations, admin_final_price, 
+      approved_itinerary_json, rejection_reason, special_notes 
+    } = req.body;
+    const adminId = req.user?.user_id; // Added by authenticateAdmin
+
+    let updateFields = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (status) { updateFields.push(`status = $${paramIndex++}`); queryParams.push(status); }
+    if (recommendations !== undefined) { updateFields.push(`recommendations = $${paramIndex++}`); queryParams.push(typeof recommendations === 'string' ? recommendations : JSON.stringify(recommendations)); }
+    if (admin_final_price !== undefined) { updateFields.push(`admin_final_price = $${paramIndex++}`); queryParams.push(admin_final_price); }
+    if (approved_itinerary_json !== undefined) { updateFields.push(`approved_itinerary_json = $${paramIndex++}`); queryParams.push(typeof approved_itinerary_json === 'string' ? approved_itinerary_json : JSON.stringify(approved_itinerary_json)); }
+    if (rejection_reason !== undefined) { updateFields.push(`rejection_reason = $${paramIndex++}`); queryParams.push(rejection_reason); }
+    if (special_notes !== undefined) { updateFields.push(`special_notes = $${paramIndex++}`); queryParams.push(special_notes); }
+
+    // Always update the approved_by timestamp if status is approved
+    if (status === 'approved') {
+        updateFields.push(`approved_at = NOW()`);
+        if (adminId) {
+            updateFields.push(`approved_by = $${paramIndex++}`);
+            queryParams.push(adminId);
+        }
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ success: false, message: "No fields to update" });
+    }
+
+    queryParams.push(requestId);
 
     const result = await db.query(`
       UPDATE chatbot_session
-      SET recommendations = $1
-      WHERE session_id = $2
+      SET ${updateFields.join(', ')}
+      WHERE session_id = $${paramIndex}
       RETURNING *
-    `, [recommendations, requestId]);
+    `, queryParams);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

@@ -3,6 +3,7 @@ import db from "../config/db.js";
 import { hashPassword } from "../utils/hash.js";
 import { signToken } from "../utils/jwt.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
+import { generateEmailVerifyToken } from "../utils/tokens.js";
 
 /* ======================================================
    REGISTER GUIDE
@@ -49,11 +50,15 @@ export const registerGuide = async (req, res) => {
 
     const passwordHash = await hashPassword(password);
 
+    // Generate email verification token
+    const { token: verifyToken, hashedToken: hashedVerifyToken, expiresAt: verifyExpiresAt } =
+      generateEmailVerifyToken();
+
     const userRes = await db.query(
-      `INSERT INTO users (email, password_hash, role, status)
-       VALUES ($1, $2, 'guide', 'active')
+      `INSERT INTO users (email, password_hash, role, status, email_verified, email_verify_token, email_verify_expires, last_verification_email_sent)
+       VALUES ($1, $2, 'guide', 'pending', false, $3, $4, NOW())
        RETURNING user_id`,
-      [normalizedEmail, passwordHash]
+      [normalizedEmail, passwordHash, hashedVerifyToken, verifyExpiresAt]
     );
 
     const userId = userRes.rows[0].user_id;
@@ -64,16 +69,19 @@ export const registerGuide = async (req, res) => {
       [userId, full_name.trim(), contact_number?.trim() || null]
     );
 
-    const token = signToken({ user_id: userId, role: "guide" });
+    // Generate verification link
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+    const verificationLink = `${frontendUrl}/verify-email?token=${verifyToken}`;
+    console.log(`[TESTING] Verification Link: ${verificationLink}`);
 
-    // Send registration confirmation email (async, non-blocking)
-    const registrationEmail = emailTemplates.guideRegistration(full_name.trim());
-    sendEmail(normalizedEmail, registrationEmail.subject, registrationEmail.html)
+    // Send verification email
+    const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
+    sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html)
       .catch(err => console.error("Email send failed:", err));
 
     res.status(201).json({
-      message: "Guide registered. Upload documents to continue.",
-      token
+      success: true,
+      message: "Registration successful. Please check your email to verify your account."
     });
 
   } catch (err) {
@@ -944,67 +952,67 @@ export const getGuideDashboardStats = async (req, res) => {
   try {
     const userId = req.user.user_id;
 
-    // Get guide_id first
-    const guideIdRes = await db.query(
-      `SELECT guide_id FROM tour_guide WHERE user_id = $1`,
+    // 1. Get guide profile info
+    const guideResult = await db.query(
+      `SELECT guide_id, commission_rate FROM tour_guide WHERE user_id = $1`,
       [userId]
     );
 
-    if (guideIdRes.rows.length === 0) {
+    if (guideResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Guide profile not found" });
     }
 
-    const guideId = guideIdRes.rows[0].guide_id;
+    const { guide_id: guideId, commission_rate: commissionRate } = guideResult.rows[0];
 
-    console.log(`[GUIDE] Fetching dashboard stats for guide: ${guideId} (User: ${userId})`);
+    console.log(`[GUIDE] Fetching dashboard stats for guide: ${guideId}`);
 
-    // 1. Get total tours assigned
-    const toursResult = await db.query(
-      `SELECT COUNT(*) as total_tours
+    // 2. Get tour counts
+    const toursCountResult = await db.query(
+      `SELECT 
+        COUNT(*) as total_tours,
+        COUNT(*) FILTER (WHERE travel_date > CURRENT_DATE AND status IN ('confirmed', 'pending')) as upcoming_tours,
+        COUNT(*) FILTER (WHERE DATE(travel_date) = CURRENT_DATE AND status = 'confirmed') as ongoing_tours,
+        COUNT(*) FILTER (WHERE status = 'completed' OR (status = 'confirmed' AND travel_date < CURRENT_DATE)) as completed_tours,
+        COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled_tours
        FROM bookings
        WHERE assigned_guide_id = $1`,
       [guideId]
     );
 
-    // 2. Get upcoming tours (future tours that are confirmed or pending)
-    const upcomingResult = await db.query(
-      `SELECT COUNT(*) as upcoming_tours
-       FROM bookings
-       WHERE assigned_guide_id = $1
-       AND travel_date > CURRENT_DATE
-       AND status IN ('confirmed', 'pending')`,
-      [guideId]
-    );
+    const counts = toursCountResult.rows[0];
 
-    // 3. Get ongoing tours (started today)
-    const ongoingResult = await db.query(
-      `SELECT COUNT(*) as ongoing_tours
-       FROM bookings
-       WHERE assigned_guide_id = $1
-       AND DATE(travel_date) = CURRENT_DATE
-       AND status = 'confirmed'`,
-      [guideId]
-    );
-
-    // 4. Get completed tours
-    const completedResult = await db.query(
-      `SELECT COUNT(*) as completed_tours
-       FROM bookings
-       WHERE assigned_guide_id = $1
-       AND (status = 'completed' OR (status = 'confirmed' AND travel_date < CURRENT_DATE))`,
-      [guideId]
-    );
-
-    // 5. Get total earnings (assuming 10% commission on completed tours)
+    // 3. Get UNIFIED earnings (New commission_amount + Legacy 10% fallback)
     const earningsResult = await db.query(
-      `SELECT COALESCE(SUM(total_price * 0.10), 0) as total_earnings
+      `SELECT 
+        COALESCE(SUM(
+          CASE 
+            WHEN commission_amount IS NOT NULL THEN commission_amount
+            ELSE (total_price * 0.10)
+          END
+        ), 0) as total_earnings
        FROM bookings
        WHERE assigned_guide_id = $1
        AND (status = 'completed' OR (status = 'confirmed' AND travel_date < CURRENT_DATE))`,
       [guideId]
     );
 
-    // 6. Get average rating from reviews
+    const totalEarnings = parseFloat(earningsResult.rows[0].total_earnings) || 0;
+
+    // 4. Get payout status distribution
+    const payoutDetailsResult = await db.query(
+      `SELECT 
+        COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0) as total_paid,
+        COALESCE(SUM(amount) FILTER (WHERE status IN ('pending', 'approved')), 0) as total_pending
+       FROM payout_requests
+       WHERE guide_id = $1`,
+      [guideId]
+    );
+
+    const totalPaid = parseFloat(payoutDetailsResult.rows[0].total_paid) || 0;
+    const totalPending = parseFloat(payoutDetailsResult.rows[0].total_pending) || 0;
+    const availableBalance = Math.max(0, totalEarnings - (totalPaid + totalPending));
+
+    // 5. Get average rating from reviews
     const ratingResult = await db.query(
       `SELECT COALESCE(AVG(r.rating), 0) as avg_rating,
               COUNT(r.review_id) as total_reviews
@@ -1014,8 +1022,7 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // NEW EXTRAS FOR RECHARTS
-    // 7. Get Earnings Trend (Last 6 months)
+    // 6. Get Earnings Trend (Last 6 months)
     const earningsTrendResult = await db.query(
       `WITH RECURSIVE months AS (
         SELECT DATE_TRUNC('month', CURRENT_DATE) as month
@@ -1026,7 +1033,12 @@ export const getGuideDashboardStats = async (req, res) => {
       )
       SELECT
         TO_CHAR(m.month, 'Mon') as month,
-        COALESCE(SUM(b.total_price * 0.10), 0) as earnings
+        COALESCE(SUM(
+          CASE 
+            WHEN b.commission_amount IS NOT NULL THEN b.commission_amount
+            ELSE (b.total_price * 0.10)
+          END
+        ), 0) as earnings
       FROM months m
       LEFT JOIN bookings b ON DATE_TRUNC('month', b.travel_date) = m.month
         AND b.assigned_guide_id = $1
@@ -1036,16 +1048,15 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // 8. Get Tour Status Distribution
-    const cancelledResult = await db.query(`SELECT COUNT(*) as cancelled FROM bookings WHERE assigned_guide_id = $1 AND status = 'cancelled'`, [guideId]);
+    // 7. Get tour status distribution for charts
     const distribution = [
-      { name: 'Completed', value: Number(completedResult.rows[0].completed_tours) },
-      { name: 'Upcoming', value: Number(upcomingResult.rows[0].upcoming_tours) },
-      { name: 'Ongoing', value: Number(ongoingResult.rows[0].ongoing_tours) },
-      { name: 'Cancelled', value: Number(cancelledResult.rows[0].cancelled) }
+      { name: 'Completed', value: Number(counts.completed_tours) },
+      { name: 'Upcoming', value: Number(counts.upcoming_tours) },
+      { name: 'Ongoing', value: Number(counts.ongoing_tours) },
+      { name: 'Cancelled', value: Number(counts.cancelled_tours) }
     ].filter(d => d.value > 0);
 
-    // 9. Get top 4 upcoming active tours
+    // 8. Get top 4 upcoming active tours
     const nextToursResult = await db.query(
       `SELECT b.booking_id, b.travel_date, b.travelers, tp.name as package_name, b.status
        FROM bookings b
@@ -1058,25 +1069,11 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // 10. Calculate Earnings Delta (% change from last month)
-    const currentMonthEarnings = earningsTrendResult.rows[5]?.earnings || 0;
-    const lastMonthEarnings = earningsTrendResult.rows[4]?.earnings || 0;
-    let earningsDelta = 0;
-    if (lastMonthEarnings > 0) {
-      earningsDelta = ((currentMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100;
-    } else if (currentMonthEarnings > 0) {
-      earningsDelta = 100; // infinite growth from 0 is capped/represented as 100%
-    }
-
-    // 11. Get Top 3 Recent Reviews
+    // 9. Get Top 3 Recent Reviews
     const recentReviewsResult = await db.query(
       `SELECT 
-         r.review_id,
-         r.rating,
-         r.comment,
-         r.created_at,
-         t.full_name as tourist_name,
-         p.name as package_name
+         r.review_id, r.rating, r.comment, r.created_at,
+         t.full_name as tourist_name, p.name as package_name
        FROM reviews r
        JOIN bookings b ON r.booking_id = b.booking_id
        JOIN tour_packages p ON b.package_id = p.package_id
@@ -1088,49 +1085,40 @@ export const getGuideDashboardStats = async (req, res) => {
       [guideId]
     );
 
-    // 12. Get Payout Stats (Sum of all paid or pending payout requests)
-    const payoutStatsResult = await db.query(
-      `SELECT COALESCE(SUM(amount), 0) as total_requested
-       FROM payout_requests
-       WHERE guide_id = $1
-       AND status IN ('pending', 'approved', 'paid')`,
-      [guideId]
-    );
+    // 10. Calculate Earnings Delta
+    const currentMonthEarnings = parseFloat(earningsTrendResult.rows[5]?.earnings) || 0;
+    const lastMonthEarnings = parseFloat(earningsTrendResult.rows[4]?.earnings) || 0;
+    let earningsDelta = 0;
+    if (lastMonthEarnings > 0) {
+      earningsDelta = ((currentMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100;
+    } else if (currentMonthEarnings > 0) {
+      earningsDelta = 100;
+    }
 
-    // FIXED: guideId above is actually userId. Let me fix the naming in the whole function or just use it correctly.
-    // In getGuideDashboardStats, guideId = req.user.user_id (from line 964).
-    
-    const totalEarnings = Number(earningsResult.rows[0].total_earnings);
-    const totalRequested = Number(payoutStatsResult.rows[0].total_requested);
-    const availableBalance = Math.max(0, totalEarnings - totalRequested);
+    const stats = {
+      totalTours: parseInt(counts.total_tours) || 0,
+      upcomingTours: parseInt(counts.upcoming_tours) || 0,
+      ongoingTours: parseInt(counts.ongoing_tours) || 0,
+      completedTours: parseInt(counts.completed_tours) || 0,
+      totalEarnings: totalEarnings,
+      totalPaid: totalPaid,
+      totalPending: totalPending,
+      availableBalance: availableBalance,
+      averageRating: parseFloat(ratingResult.rows[0].avg_rating).toFixed(1) || '0.0',
+      totalReviews: parseInt(ratingResult.rows[0].total_reviews) || 0,
+      commissionRate: parseFloat(commissionRate) || 0.10,
+      earningsTrend: earningsTrendResult.rows,
+      tourDistribution: distribution,
+      nextTours: nextToursResult.rows,
+      recentReviews: recentReviewsResult.rows,
+      earningsDelta: Math.round(earningsDelta)
+    };
 
-    res.json({
-      success: true,
-      stats: {
-        totalTours: Number(toursResult.rows[0].total_tours),
-        upcomingTours: Number(upcomingResult.rows[0].upcoming_tours),
-        ongoingTours: Number(ongoingResult.rows[0].ongoing_tours),
-        completedTours: Number(completedResult.rows[0].completed_tours),
-        totalEarnings: totalEarnings,
-        averageRating: Number(ratingResult.rows[0].avg_rating).toFixed(1),
-        totalReviews: Number(ratingResult.rows[0].total_reviews),
-        earningsTrend: earningsTrendResult.rows.map(row => ({ month: row.month, earnings: Number(row.earnings) })),
-        tourDistribution: distribution,
-        nextTours: nextToursResult.rows,
-        earningsDelta: Math.round(earningsDelta),
-        recentReviews: recentReviewsResult.rows,
-        availableBalance: Number(availableBalance.toFixed(2))
-      }
-    });
+    res.json({ success: true, stats });
 
   } catch (err) {
     console.error("[GUIDE] getDashboardStats error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch dashboard statistics",
-      error: err.message,
-      stack: err.stack
-    });
+    res.status(500).json({ success: false, message: "Failed to fetch dashboard statistics" });
   }
 };
 
@@ -1407,7 +1395,7 @@ export const updateBankDetails = async (req, res) => {
 
     const result = await db.query(
       `UPDATE tour_guide 
-       SET bank_name = $1, account_no = $2, account_name = $3, branch_name = $4, updated_at = NOW()
+       SET bank_name = $1, account_no = $2, account_name = $3, branch_name = $4
        WHERE user_id = $5
        RETURNING *`,
       [bank_name, account_no, account_name, branch_name, userId]
@@ -1441,9 +1429,12 @@ export const requestPayout = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid payout amount" });
     }
 
-    // 1. Get guide_id and check if bank details are set
+    // 1. Get guide_id and check if bank details are set + check admin status
     const guideResult = await db.query(
-      `SELECT guide_id, bank_name, account_no FROM tour_guide WHERE user_id = $1`,
+      `SELECT tg.guide_id, tg.bank_name, tg.account_no, u.status 
+       FROM tour_guide tg
+       JOIN users u ON tg.user_id = u.user_id
+       WHERE tg.user_id = $1`,
       [userId]
     );
 
@@ -1452,6 +1443,14 @@ export const requestPayout = async (req, res) => {
     }
 
     const guide = guideResult.rows[0];
+
+    // Security: Only active guides can request payouts
+    if (guide.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account must be approved by an administrator before you can request payouts."
+      });
+    }
     if (!guide.bank_name || !guide.account_no) {
       return res.status(400).json({
         success: false,
@@ -1459,17 +1458,21 @@ export const requestPayout = async (req, res) => {
       });
     }
 
-    // 2. Calculate available balance
-    // Get total earnings
+    // 2. Calculate available balance using the UNIFIED logic
     const earningsResult = await db.query(
-      `SELECT COALESCE(SUM(total_price * 0.10), 0) as total_earnings
+      `SELECT 
+        COALESCE(SUM(
+          CASE 
+            WHEN commission_amount IS NOT NULL THEN commission_amount
+            ELSE (total_price * 0.10)
+          END
+        ), 0) as total_earnings
        FROM bookings
        WHERE assigned_guide_id = $1
-       AND status = 'completed'`,
+       AND (status = 'completed' OR (status = 'confirmed' AND travel_date < CURRENT_DATE))`,
       [guide.guide_id]
     );
 
-    // Get total requested (pending, approved, paid)
     const payoutStatsResult = await db.query(
       `SELECT COALESCE(SUM(amount), 0) as total_requested
        FROM payout_requests
@@ -1478,7 +1481,9 @@ export const requestPayout = async (req, res) => {
       [guide.guide_id]
     );
 
-    const availableBalance = Math.max(0, Number(earningsResult.rows[0].total_earnings) - Number(payoutStatsResult.rows[0].total_requested));
+    const totalEarnings = parseFloat(earningsResult.rows[0].total_earnings) || 0;
+    const totalRequested = parseFloat(payoutStatsResult.rows[0].total_requested) || 0;
+    const availableBalance = Math.max(0, totalEarnings - totalRequested);
 
     if (Number(amount) > availableBalance) {
       return res.status(400).json({

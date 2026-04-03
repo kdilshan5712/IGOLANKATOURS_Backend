@@ -1,19 +1,16 @@
 import express from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
-import { getTourMessages, sendTourMessage, authorizeChat } from "../controllers/chat.controller.js";
+import { getTourMessages, sendTourMessage, authorizeChat, getChatbotMessages, sendChatbotMessage } from "../controllers/chat.controller.js";
 
 const router = express.Router();
 
-// Get all messages for a specific booking
-// Auth: Required (Tourist or Assigned Guide)
+// --- Booking-based Chat ---
 router.get("/:bookingId", authenticate, getTourMessages);
-
-// Send a new message for a specific booking
-// Auth: Required (Tourist or Assigned Guide)
 router.post("/:bookingId", authenticate, sendTourMessage);
-
-// Authorize or revoke chat access for a specific booking
-// Auth: Required (Admin only)
 router.patch("/:bookingId/authorize", authenticate, authorizeChat);
+
+// --- Session-based Chat (Custom Inquiry) ---
+router.get("/session/:sessionId", authenticate, getChatbotMessages);
+router.post("/session/:sessionId", authenticate, sendChatbotMessage);
 
 export default router;

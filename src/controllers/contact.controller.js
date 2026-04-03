@@ -15,7 +15,7 @@ import { emailTemplates } from '../utils/sendEmail.js';
  */
 export const submitContactMessage = async (req, res) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    const { name, email, phone, subject, message, session_id } = req.body;
 
     // Validate inputs
     if (!name || name.trim().length < 2) {
@@ -48,15 +48,16 @@ export const submitContactMessage = async (req, res) => {
 
     // Insert contact message
     const result = await db.query(`
-      INSERT INTO contact_messages (name, email, phone, subject, message, status, created_at)
-      VALUES ($1, $2, $3, $4, $5, 'new', NOW())
+      INSERT INTO contact_messages (name, email, phone, subject, message, status, session_id, created_at)
+      VALUES ($1, $2, $3, $4, $5, 'new', $6, NOW())
       RETURNING message_id, name, email, subject, created_at
     `, [
       name.trim(),
       email.toLowerCase().trim(),
       phone ? phone.trim() : null,
       subject.trim(),
-      message.trim()
+      message.trim(),
+      session_id || null
     ]);
 
     const contactMessage = result.rows[0];

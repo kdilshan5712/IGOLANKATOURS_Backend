@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
+import { getAllDestinations, createDestination, updateDestination, deleteDestination } from "../controllers/destinations.controller.js";
 import { getAllPayoutRequests, updatePayoutStatus } from "../controllers/admin.payout.controller.js";
 import {
    getPendingGuides,
@@ -20,8 +21,6 @@ import {
    rejectGuideDocument
 } from "../controllers/admin.controller.js";
 import {
-   getDashboardStats,
-   getRecentBookings,
    getAllPackages,
    createPackage,
    updatePackage,
@@ -43,6 +42,8 @@ import {
    updateRule,
    deleteRule
 } from "../controllers/admin.pricing.controller.js";
+import { updateGuideCommission } from "../controllers/admin.guide.controller.js";
+import { getAdminFaqs, createFaq, updateFaq, deleteFaq } from "../controllers/faq.controller.js";
 
 const router = express.Router();
 
@@ -68,10 +69,8 @@ router.patch("/guide-documents/:document_id/approve", approveGuideDocument);
 router.patch("/guide-documents/:document_id/reject", rejectGuideDocument);
 
 /* ======================================================
-   DASHBOARD ROUTES
+   ADMIN SECTIONS (MANAGED BY SPECIFIC CONTROLLERS)
    ====================================================== */
-router.get("/dashboard/stats", getDashboardStats);
-router.get("/dashboard/recent-bookings", getRecentBookings);
 
 /* ======================================================
    PACKAGES MANAGEMENT
@@ -131,6 +130,9 @@ router.get("/guides/:guideId/documents", getGuideDocuments);
 // Get document URL (for viewing)
 router.get("/guides/:guideId/documents/:documentId/url", getDocumentUrl);
 
+// Update guide commission rate
+router.patch("/guides/:guideId/commission", updateGuideCommission);
+
 /* ======================================================
     PRICING RULES MANAGEMENT
     ====================================================== */
@@ -144,5 +146,21 @@ router.delete("/pricing-rules/:id", deleteRule);
     ====================================================== */
 router.get("/payouts", getAllPayoutRequests);
 router.patch("/payouts/:id/status", updatePayoutStatus);
+
+/* ======================================================
+    DESTINATIONS MANAGEMENT
+    ====================================================== */
+router.get("/destinations", getAllDestinations);
+router.post("/destinations", createDestination);
+router.put("/destinations/:id", updateDestination);
+router.delete("/destinations/:id", deleteDestination);
+
+/* ======================================================
+    FAQS MANAGEMENT
+    ====================================================== */
+router.get("/faqs", getAdminFaqs);
+router.post("/faqs", createFaq);
+router.put("/faqs/:id", updateFaq);
+router.delete("/faqs/:id", deleteFaq);
 
 export default router;

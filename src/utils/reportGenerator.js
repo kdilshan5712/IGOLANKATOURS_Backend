@@ -279,9 +279,170 @@ export const generateBookingInvoicePDF = async (booking, res) => {
     doc.end();
 };
 
+/**
+ * Generate PDF Report for Revenue
+ */
+export const generateRevenueReportPDF = async (reportData, res) => {
+    const doc = new PDFDocument({ margin: 50, bufferPages: true });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=revenue-report.pdf');
+
+    doc.on('error', (err) => {
+        console.error('[PDF] Document error:', err.message);
+        if (!res.writableEnded) res.end();
+    });
+
+    res.on('error', (err) => {
+        console.error('[PDF] Response stream error:', err.message);
+        doc.destroy?.();
+    });
+
+    doc.pipe(res);
+
+    try {
+        // Branding and Title
+        doc.moveDown(8);
+        doc.fontSize(16).font('Helvetica-Bold').fillColor('#111827')
+            .text('Revenue Analytics Report', { align: 'left' });
+        doc.fontSize(10).font('Helvetica').fillColor('#6b7280')
+            .text(`Generated on: ${new Date().toLocaleString()}`);
+        doc.moveDown(2);
+
+        // Summary Section
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
+            .text('Financial Summary');
+        doc.moveTo(50, doc.y + 2).lineTo(550, doc.y + 2).strokeColor('#e5e7eb').lineWidth(1).stroke();
+        doc.moveDown(1);
+
+        const summary = reportData.summary;
+        const summaryY = doc.y;
+        
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#374151');
+        doc.text('Total Bookings:', 50, summaryY);
+        doc.text('Total Revenue:', 200, summaryY);
+        doc.text('Completed Revenue:', 350, summaryY);
+        doc.text('Avg Booking Value:', 50, summaryY + 20);
+
+        doc.font('Helvetica').fillColor('#4b5563');
+        doc.text(`${summary.total_bookings}`, 130, summaryY);
+        doc.text(`$${Number(summary.total_revenue).toFixed(2)}`, 280, summaryY);
+        doc.text(`$${Number(summary.completed_revenue).toFixed(2)}`, 450, summaryY);
+        doc.text(`$${Number(summary.average_booking_value).toFixed(2)}`, 160, summaryY + 20);
+
+        doc.moveDown(3);
+
+        // Revenue by Status Table
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
+            .text('Revenue by Booking Status');
+        doc.moveDown(0.5);
+
+        const statusTableTop = doc.y;
+        const statusCols = [50, 200, 350];
+        
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#374151');
+        doc.text('Status', statusCols[0], statusTableTop);
+        doc.text('Bookings', statusCols[1], statusTableTop);
+        doc.text('Revenue', statusCols[2], statusTableTop);
+        
+        doc.moveTo(50, statusTableTop + 15).lineTo(450, statusTableTop + 15).strokeColor('#374151').lineWidth(0.5).stroke();
+        
+        let currentY = statusTableTop + 25;
+        doc.font('Helvetica').fillColor('#4b5563');
+
+        reportData.by_status.forEach((item) => {
+            doc.text(item.status.toUpperCase(), statusCols[0], currentY);
+            doc.text(`${item.bookings_count}`, statusCols[1], currentY);
+            doc.text(`$${Number(item.revenue).toFixed(2)}`, statusCols[2], currentY);
+            currentY += 20;
+        });
+
+        doc.moveDown(2);
+
+        // Revenue by Package Table (Top 10)
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#111827')
+            .text('Revenue by Tour Package (Top 10)');
+        doc.moveDown(0.5);
+
+        const packageTableTop = doc.y;
+        const packageCols = [50, 250, 350, 450];
+
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#374151');
+        doc.text('Package', packageCols[0], packageTableTop);
+        doc.text('Bookings', packageCols[1], packageTableTop);
+        doc.text('Revenue', packageCols[2], packageTableTop);
+        doc.text('Avg. Price', packageCols[3], packageTableTop);
+
+        doc.moveTo(50, packageTableTop + 15).lineTo(550, packageTableTop + 15).strokeColor('#374151').lineWidth(0.5).stroke();
+
+        currentY = packageTableTop + 25;
+        doc.font('Helvetica').fillColor('#4b5563');
+
+        reportData.by_package.slice(0, 10).forEach((item) => {
+            if (currentY > 700) {
+                doc.addPage();
+                currentY = 130;
+            }
+            doc.text(item.package_name, packageCols[0], currentY, { width: 190, ellipsis: true });
+            doc.text(`${item.bookings_count}`, packageCols[1], currentY);
+            doc.text(`$${Number(item.revenue).toFixed(2)}`, packageCols[2], currentY);
+            doc.text(`$${Number(item.average_price).toFixed(2)}`, packageCols[3], currentY);
+            currentY += 20;
+        });
+
+        // Apply shared branding after all pages are created
+        drawBranding(doc);
+
+    } catch (err) {
+        console.error('[PDF] Error while building revenue report:', err.message);
+    } finally {
+        doc.end();
+    }
+};
+
+/**
+ * Generate CSV Report for Revenue
+ */
+export const generateRevenueReportCSV = async (reportData, res) => {
+    // We'll create a multi-section CSV or just the package breakdown
+    const csvStringifier = createObjectCsvStringifier({
+        header: [
+            { id: 'package_name', title: 'Package Name' },
+            { id: 'bookings_count', title: 'Bookings' },
+            { id: 'revenue', title: 'Total Revenue' },
+            { id: 'average_price', title: 'Average Booking Value' }
+        ]
+    });
+
+    const records = reportData.by_package.map(p => ({
+        package_name: p.package_name,
+        bookings_count: p.bookings_count,
+        revenue: p.revenue,
+        average_price: p.average_price
+    }));
+
+    const header = csvStringifier.getHeaderString();
+    const content = csvStringifier.stringifyRecords(records);
+
+    // Add summary header at the top
+    const summary = reportData.summary;
+    const summarySection = `REVENUE SUMMARY\n` +
+        `Total Bookings,${summary.total_bookings}\n` +
+        `Total Revenue,${summary.total_revenue}\n` +
+        `Completed Revenue,${summary.completed_revenue}\n` +
+        `Avg Booking Value,${summary.average_booking_value}\n\n` +
+        `BREAKDOWN BY PACKAGE\n`;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=revenue-report.csv');
+    res.send(summarySection + header + content);
+};
+
 export default {
     generateBookingReportPDF,
     generateBookingReportCSV,
     generateUserReportCSV,
-    generateBookingInvoicePDF
+    generateBookingInvoicePDF,
+    generateRevenueReportPDF,
+    generateRevenueReportCSV
 };
