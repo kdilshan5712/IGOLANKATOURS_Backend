@@ -483,8 +483,8 @@ export const convertCustomToBooking = async (req, res) => {
     // 2. Create a custom package
     const packageInsertResult = await client.query(`
       INSERT INTO tour_packages 
-        (name, description, base_price, duration, category, is_visible, image, highlights, included, not_included)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        (name, description, base_price, duration, category, budget, is_active, image, highlights, includes, excludes, itinerary)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING package_id
     `, [
       `Custom: ${destination}`,
@@ -492,11 +492,13 @@ export const convertCustomToBooking = async (req, res) => {
       final_price,
       duration,
       'Custom',
+      'luxury', // Default for custom session
       false, // Hide from public list
       'https://images.unsplash.com/photo-1589553416260-f586c8f1514f?q=80&w=2070', // Default image
       prefs.itinerary ? JSON.stringify(prefs.itinerary) : '[]',
       '[]',
-      '[]'
+      '[]',
+      prefs.itinerary ? JSON.stringify(prefs.itinerary) : '[]'
     ]);
 
     const package_id = packageInsertResult.rows[0].package_id;
@@ -553,6 +555,7 @@ export const convertCustomToBooking = async (req, res) => {
  * Auth: Required (Tourist only)
  */
 export const acceptAndBookCustomTour = async (req, res) => {
+  console.log("🚀 Executing acceptAndBookCustomTour V2.2 (Final Column Fix Applied)");
   const { sessionId } = req.params;
   const user_id = req.user.user_id;
 
@@ -561,11 +564,23 @@ export const acceptAndBookCustomTour = async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1. Fetch and verify the session
+    // 1. Resolve tourist_id from user_id
+    const touristLookup = await client.query(
+      "SELECT tourist_id FROM tourist WHERE user_id = $1",
+      [user_id]
+    );
+
+    if (touristLookup.rows.length === 0) {
+      throw new Error("No tourist profile found for your account. Please complete your profile first.");
+    }
+
+    const finalTouristId = touristLookup.rows[0].tourist_id;
+
+    // 2. Fetch and verify the session
     const sessionRes = await client.query(`
       SELECT * FROM chatbot_session 
       WHERE session_id = $1 AND tourist_id = $2
-    `, [sessionId, user_id]);
+    `, [sessionId, finalTouristId]);
 
     if (sessionRes.rows.length === 0) {
       throw new Error("Custom tour request not found or does not belong to you.");
@@ -573,7 +588,7 @@ export const acceptAndBookCustomTour = async (req, res) => {
 
     const session = sessionRes.rows[0];
 
-    // 2. Safety check: must be approved by admin
+    // 3. Safety check: must be approved by admin
     if (session.status !== 'approved') {
       throw new Error(`This tour cannot be booked yet. Current status: ${session.status}`);
     }
@@ -582,23 +597,39 @@ export const acceptAndBookCustomTour = async (req, res) => {
       throw new Error("Admin has not finalized the price for this tour yet.");
     }
 
-    // 3. Create a custom hidden package for this booking
+    // 3. Parse recommendations to get the itinerary
+    let itineraryJson = [];
+    let recommendations = session.recommendations;
+    if (typeof recommendations === 'string') {
+      try {
+        const parsed = JSON.parse(recommendations);
+        itineraryJson = parsed.daily_plan || parsed;
+      } catch (e) {
+        itineraryJson = [];
+      }
+    } else if (recommendations && typeof recommendations === 'object') {
+      itineraryJson = recommendations.daily_plan || recommendations;
+    }
+
+    // 4. Create a custom hidden package for this booking
     const packageInsertResult = await client.query(`
       INSERT INTO tour_packages 
-        (name, description, base_price, duration, category, is_visible, image, highlights, included, not_included)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        (name, description, base_price, duration, category, budget, is_active, image, highlights, includes, excludes, itinerary)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING package_id
     `, [
-      session.title || "Custom Approved Tour",
+      session.title || "Custom Signature Journey",
       `Custom tour accepted by traveler from session ${sessionId}.`,
       session.admin_final_price,
-      `${session.duration_days} Days`,
+      session.duration_days ? `${session.duration_days} Days` : "Custom Duration",
       'Custom',
+      'luxury', // Signature custom tours
       false, // Hidden
-      'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=2070', // Different default
-      session.approved_itinerary_json ? JSON.stringify(session.approved_itinerary_json) : '[]',
-      '["Dedicated Transport", "Personal Guide", "Boutique Stays"]',
-      '["International Flights", "Personal Expenses"]'
+      'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=2070', // Default image
+      JSON.stringify(itineraryJson),
+      '["Dedicated Signature Transport", "Private Personal Guide", "Elite Boutique Stays"]',
+      '["International Flights", "Personal Expenses", "Visa Fees"]',
+      JSON.stringify(itineraryJson)
     ]);
 
     const package_id = packageInsertResult.rows[0].package_id;
@@ -608,6 +639,18 @@ export const acceptAndBookCustomTour = async (req, res) => {
     const uniqueSuffix = Math.random().toString(36).substring(2, 10).toUpperCase();
     const booking_reference = `BOOK-CUST-${year}-${uniqueSuffix}`;
 
+    console.log("📝 [BOOKING] Creating custom booking with values:", {
+      user_id,
+      package_id,
+      travel_date: session.travel_date || new Date(),
+      travelers: session.traveler_count || 1,
+      total_price: session.admin_final_price,
+      deposit_amount: session.admin_final_price,
+      balance_amount: 0,
+      status: 'confirmed',
+      payment_status: 'pending'
+    });
+
     const bookingInsertResult = await client.query(`
       INSERT INTO bookings 
         (user_id, package_id, travel_date, travelers, total_price, deposit_amount, balance_amount, status, payment_status, created_at)
@@ -616,12 +659,12 @@ export const acceptAndBookCustomTour = async (req, res) => {
     `, [
       user_id,
       package_id,
-      session.travel_date || new Date(), // Use fallback if not set during AI chat
+      session.travel_date || new Date(),
       session.traveler_count || 1,
       session.admin_final_price,
-      session.admin_final_price, // For now, custom tours require full payment to proceed
+      session.admin_final_price, 
       0,
-      'pending_payment',
+      'confirmed',
       'pending'
     ]);
 
@@ -637,7 +680,11 @@ export const acceptAndBookCustomTour = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Tour accepted! Proceeding to payment.",
-      booking: bookingInsertResult.rows[0]
+      booking: {
+        ...bookingInsertResult.rows[0],
+        package_name: session.title || "Custom Approved Tour",
+        total_price: session.admin_final_price
+      }
     });
 
   } catch (err) {

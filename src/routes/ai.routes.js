@@ -15,6 +15,6 @@ const router = express.Router();
 
 router.post('/session', aiSchemas.saveSession, validate, saveChatbotSession);
 router.post('/submit-custom-tour', authenticate, contactSchemas.customTour, validate, submitCustomTourRequest);
-router.post('/sync-history', aiSchemas.syncHistory, validate, syncChatHistory);
+router.post('/sync-history', authenticate, aiSchemas.syncHistory, validate, syncChatHistory);
 
 export default router;

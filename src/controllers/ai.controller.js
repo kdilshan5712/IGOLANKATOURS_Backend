@@ -53,8 +53,12 @@ export const submitCustomTourRequest = async (req, res) => {
       tourist_name, tourist_email, tourist_phone
     } = req.body;
     const authenticatedUserId = req.user?.user_id;
-    let finalTouristId = tourist_id;
 
+    if (!authenticatedUserId) {
+        return res.status(401).json({ success: false, message: "Authentication required to submit custom tour" });
+    }
+
+    let finalTouristId = null;
     console.log("🔍 [AI] Processing submission for user_id:", authenticatedUserId);
 
     if (authenticatedUserId) {
@@ -142,28 +146,26 @@ export const syncChatHistory = async (req, res) => {
   try {
     const { sessionId, messages } = req.body;
     if (!sessionId || !messages || !Array.isArray(messages)) {
-      return res.status(400).json({ success: false, message: "Invalid session or messages" });
+      return res.status(400).json({ success: false, message: "Invalid sessionId or messages" });
     }
 
-    // Insert only the latest messages that aren't already system/errors
-    // We'll iterate and insert to maintain order, or use a multi-row insert
+    const authenticatedUserId = req.user?.user_id;
+
     for (const msg of messages) {
-      // Map roles to sender/receiver logic
-      // User: sender_id = UID if exists, receiver = null
-      // Assistant: sender = null, receiver = UID if exists
-      // If anonymous, we'll use null for UID
-      
       const isUser = msg.sender === "user";
+      const isSystem = msg.sender === "system";
       const messageText = msg.text;
 
+      // Map roles to sender/receiver logic
       await db.query(`
-        INSERT INTO tour_messages (session_id, message, sender_id, receiver_id, created_at)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO tour_messages (session_id, message, sender_id, receiver_id, sender_role, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `, [
         sessionId,
         messageText,
-        isUser ? (req.user?.user_id || null) : null,
-        isUser ? null : (req.user?.user_id || null),
+        isUser ? authenticatedUserId : null,
+        isUser ? null : (authenticatedUserId || null),
+        msg.sender, // Store actual sender role (user/assistant/system)
         msg.timestamp || new Date()
       ]);
     }

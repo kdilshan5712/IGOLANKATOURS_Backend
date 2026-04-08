@@ -31,19 +31,19 @@ export const aiSchemas = {
    * Validation for syncing chat history
    */
   syncHistory: [
-    body('session_id')
+    body('sessionId')
       .notEmpty().withMessage('Session ID is required')
       .isUUID().withMessage('Session ID must be a valid UUID'),
     
-    body('history')
-      .isArray().withMessage('History must be an array')
-      .notEmpty().withMessage('History cannot be empty'),
+    body('messages')
+      .isArray().withMessage('Messages must be an array')
+      .notEmpty().withMessage('Messages cannot be empty'),
     
-    body('history.*.role')
-      .isIn(['user', 'assistant', 'system']).withMessage('Invalid message role'),
+    body('messages.*.sender')
+      .isIn(['user', 'assistant', 'system']).withMessage('Invalid message sender'),
     
-    body('history.*.content')
-      .notEmpty().withMessage('Message content is required')
-      .isString().withMessage('Message content must be a string')
+    body('messages.*.text')
+      .notEmpty().withMessage('Message text is required')
+      .isString().withMessage('Message text must be a string')
   ]
 };
