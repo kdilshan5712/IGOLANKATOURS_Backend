@@ -24,7 +24,7 @@ const getDashboardStats = async (req, res) => {
         (SELECT COUNT(*) FROM contact_messages WHERE status = 'new') as new_messages,
         (SELECT COUNT(*) FROM chatbot_session WHERE status = 'pending') as pending_requests,
         (SELECT COUNT(*) FROM payout_requests WHERE status = 'pending') as pending_payouts,
-        (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE status IN ('confirmed', 'completed') AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as total_revenue
+        (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE status IN ('confirmed', 'completed') AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())) as total_revenue
     `);
 
     // Fetch Revenue Trends (Last 6 Months)
@@ -262,7 +262,9 @@ const generateReport = async (req, res) => {
       generateBookingReportCSV,
       generateUserReportCSV,
       generateRevenueReportPDF,
-      generateRevenueReportCSV
+      generateRevenueReportCSV,
+      generateAuditLogReportPDF,
+      generateAuditLogReportCSV
     } = await import('../utils/reportGenerator.js');
 
     let dateFilter = '';
@@ -300,6 +302,23 @@ const generateReport = async (req, res) => {
       const reportData = await fetchRevenueReportData(dateFrom, dateTo);
       if (format === 'pdf') await generateRevenueReportPDF(reportData, res);
       else await generateRevenueReportCSV(reportData, res);
+    } else if (type === 'audit') {
+      let auditQuery = `
+        SELECT 
+          l.*,
+          u.email as admin_email,
+          CASE 
+            WHEN u.role = 'admin' THEN 'System Administrator'
+            ELSE 'Staff'
+          END as admin_name
+        FROM audit_logs l
+        LEFT JOIN users u ON l.admin_id = u.user_id
+        ${dateFilter.replace(/created_at/g, 'l.created_at')}
+        ORDER BY l.created_at DESC
+      `;
+      const auditResult = await db.query(auditQuery, params);
+      if (format === 'pdf') await generateAuditLogReportPDF(auditResult.rows, res);
+      else await generateAuditLogReportCSV(auditResult.rows, res);
     } else {
       return res.status(400).json({ success: false, message: 'Invalid report type' });
     }

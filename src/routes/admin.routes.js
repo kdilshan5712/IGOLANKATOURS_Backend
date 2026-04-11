@@ -44,6 +44,13 @@ import {
 } from "../controllers/admin.pricing.controller.js";
 import { updateGuideCommission } from "../controllers/admin.guide.controller.js";
 import { getAdminFaqs, createFaq, updateFaq, deleteFaq } from "../controllers/faq.controller.js";
+import {
+   getAllCoupons,
+   createCoupon,
+   updateCoupon,
+   deleteCoupon
+} from "../controllers/admin.coupon.controller.js";
+
 
 const router = express.Router();
 
@@ -162,5 +169,14 @@ router.get("/faqs", getAdminFaqs);
 router.post("/faqs", createFaq);
 router.put("/faqs/:id", updateFaq);
 router.delete("/faqs/:id", deleteFaq);
+
+/* ======================================================
+    COUPONS MANAGEMENT
+    ====================================================== */
+router.get("/coupons", getAllCoupons);
+router.post("/coupons", createCoupon);
+router.put("/coupons/:id", updateCoupon);
+router.delete("/coupons/:id", deleteCoupon);
+
 
 export default router;

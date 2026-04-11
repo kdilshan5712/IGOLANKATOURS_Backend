@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
+import { recordAuditLog } from "../utils/auditLogger.js";
 
 // GET all guides with document counts and status
 export const getAllGuides = async (req, res) => {
@@ -243,6 +244,15 @@ export const approveGuideAction = async (req, res) => {
       // Continue anyway - guide is still approved
     }
 
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'APPROVE_GUIDE',
+      targetType: 'GUIDE',
+      targetId: guideId,
+      changes: { status: 'active', approved: true },
+      description: `Approved and activated tour guide: ${guide.full_name}`
+    });
+
     res.json({ success: true, message: "Guide approved successfully" });
   } catch (err) {
     console.error("[ADMIN] approveGuideAction error:", err);
@@ -305,6 +315,15 @@ export const rejectGuideAction = async (req, res) => {
       // Continue anyway - guide is still rejected
     }
 
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'REJECT_GUIDE',
+      targetType: 'GUIDE',
+      targetId: guideId,
+      changes: { status: 'rejected', approved: false, reason: reason },
+      description: `Rejected tour guide: ${guide.full_name}. Reason: ${reason}`
+    });
+
     res.json({ success: true, message: "Guide rejected successfully" });
   } catch (err) {
     console.error("[ADMIN] rejectGuideAction error:", err);
@@ -361,10 +380,23 @@ export const updateGuideCommission = async (req, res) => {
       });
     }
 
+    // Fetch guide name for better description
+    const guideNameRes = await db.query(`SELECT full_name, commission_rate FROM tour_guide WHERE guide_id = $1`, [guideId]);
+    const oldRate = guideNameRes.rows[0]?.commission_rate;
+
     await db.query(
       `UPDATE tour_guide SET commission_rate = $1 WHERE guide_id = $2`,
       [commissionRate, guideId]
     );
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'UPDATE_GUIDE_COMMISSION',
+      targetType: 'GUIDE',
+      targetId: guideId,
+      changes: { old_rate: oldRate, new_rate: commissionRate },
+      description: `Updated commission rate for guide ${guideId} to ${commissionRate * 100}%`
+    });
 
     res.json({ 
       success: true, 

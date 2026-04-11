@@ -8,7 +8,17 @@ import pricingService from "../services/pricing.service.js";
  */
 export const createBooking = async (req, res) => {
   console.log("DEBUG: Booking Request Body:", JSON.stringify(req.body, null, 2));
-  const { package_id, travel_date, adults, children, room_type, special_requests, travellers } = req.body;
+  const { 
+    package_id, 
+    travel_date, 
+    adults, 
+    children, 
+    room_type, 
+    special_requests, 
+    travellers,
+    promo_code 
+  } = req.body;
+
   const user_id = req.user.user_id;
 
   // Use a client for transaction
@@ -99,7 +109,54 @@ export const createBooking = async (req, res) => {
       numChildren
     );
 
-    const total_price = pricing.totalPrice;
+    let total_price = pricing.totalPrice;
+    let discount_amount = 0;
+    let applied_coupon_id = null;
+
+    // --- PROMO CODE LOGIC ---
+    if (promo_code) {
+      const couponRes = await client.query(
+        "SELECT * FROM coupons WHERE code = $1 AND is_active = TRUE",
+        [promo_code.toUpperCase()]
+      );
+
+      if (couponRes.rows.length > 0) {
+        const coupon = couponRes.rows[0];
+        const now = new Date();
+        const expiry = coupon.expiry_date ? new Date(coupon.expiry_date) : null;
+        
+        // Basic validation
+        const isValid = (!expiry || expiry > now) && 
+                        (!coupon.usage_limit || coupon.usage_count < coupon.usage_limit) &&
+                        (total_price >= parseFloat(coupon.min_amount || 0));
+
+        if (isValid) {
+          if (coupon.discount_type === 'percentage') {
+            discount_amount = (total_price * parseFloat(coupon.discount_value)) / 100;
+            if (coupon.max_discount && discount_amount > parseFloat(coupon.max_discount)) {
+              discount_amount = parseFloat(coupon.max_discount);
+            }
+          } else {
+            discount_amount = parseFloat(coupon.discount_value);
+          }
+
+          if (discount_amount > total_price) discount_amount = total_price;
+          
+          total_price -= discount_amount;
+          applied_coupon_id = coupon.coupon_id;
+
+          // Increment usage count
+          await client.query(
+            "UPDATE coupons SET usage_count = usage_count + 1 WHERE coupon_id = $1",
+            [applied_coupon_id]
+          );
+          
+          console.log(`🎟️ [PROMO] Applied code ${promo_code}: -$${discount_amount}`);
+        }
+      }
+    }
+    // --- END PROMO CODE LOGIC ---
+
     
     // Calculate days until travel
     const daysUntilTravel = Math.ceil((travelDateObj - today) / (1000 * 60 * 60 * 24));
@@ -129,11 +186,12 @@ export const createBooking = async (req, res) => {
     // Create booking (Only insert columns that exist in the schema)
     const result = await client.query(
       `INSERT INTO bookings 
-       (user_id, package_id, travel_date, travelers, total_price, deposit_amount, balance_amount, status, payment_status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+       (user_id, package_id, travel_date, travelers, total_price, deposit_amount, balance_amount, status, payment_status, coupon_id, discount_amount, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
        RETURNING *`,
-      [user_id, package_id, travel_date, totalTravelers, total_price, deposit_amount, balance_amount, 'confirmed', 'pending']
+      [user_id, package_id, travel_date, totalTravelers, total_price, deposit_amount, balance_amount, 'confirmed', 'pending', applied_coupon_id, discount_amount]
     );
+
 
     const booking = result.rows[0];
     const bookingId = booking.booking_id;
@@ -159,7 +217,7 @@ export const createBooking = async (req, res) => {
         type: 'booking',
         title: 'Booking Created',
         message: `Your booking for ${packageData.name} is drafted. Please complete payment.`,
-        link: `/booking/${bookingId}/payment`
+        link: `/dashboard/bookings/${bookingId}`
       });
 
       // Email logic usually happens after payment confirmation, so skipping here for "pending" booking

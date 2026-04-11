@@ -1,5 +1,7 @@
 import db from "../config/db.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
+import { NotificationService } from "../utils/notificationService.js";
+import { recordAuditLog } from "../utils/auditLogger.js";
 
 /* ======================================================
    DASHBOARD STATISTICS
@@ -171,10 +173,21 @@ export const createPackage = async (req, res) => {
       RETURNING *, base_price as price
     `, [name, description, price, duration, category, budget, hotel, rating || 0, image, season_type, coast_type]);
 
+    const newPackage = result.rows[0];
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'CREATE_PACKAGE',
+      targetType: 'PACKAGE',
+      targetId: newPackage.package_id,
+      changes: newPackage,
+      description: `Created new tour package: ${newPackage.name}`
+    });
+
     res.status(201).json({
       success: true,
       message: "Package created successfully",
-      package: result.rows[0]
+      package: newPackage
     });
   } catch (err) {
     console.error("createPackage error:", err);
@@ -245,6 +258,10 @@ export const updatePackage = async (req, res) => {
     `;
     values.push(packageId);
 
+    // Fetch old version for audit comparison
+    const oldPackageRes = await db.query(`SELECT * FROM tour_packages WHERE package_id = $1`, [packageId]);
+    const oldPackage = oldPackageRes.rows[0];
+
     const result = await db.query(query, values);
 
     if (result.rows.length === 0) {
@@ -253,6 +270,20 @@ export const updatePackage = async (req, res) => {
         message: "Package not found"
       });
     }
+
+    const updatedPackage = result.rows[0];
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'UPDATE_PACKAGE',
+      targetType: 'PACKAGE',
+      targetId: packageId,
+      changes: {
+        from: oldPackage,
+        to: updatedPackage
+      },
+      description: `Updated tour package: ${updatedPackage.name}`
+    });
 
     res.json({
       success: true,
@@ -286,6 +317,15 @@ export const deletePackage = async (req, res) => {
     res.json({
       success: true,
       message: "Package deleted successfully"
+    });
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'DELETE_PACKAGE',
+      targetType: 'PACKAGE',
+      targetId: packageId,
+      changes: { deleted_package: result.rows[0] },
+      description: `Deleted tour package: ${result.rows[0].name}`
     });
   } catch (err) {
     console.error("deletePackage error:", err);
@@ -341,6 +381,9 @@ export const updateBookingStatus = async (req, res) => {
     const { bookingId } = req.params;
     const { status } = req.body;
 
+    const oldBookingRes = await db.query(`SELECT status FROM bookings WHERE booking_id = $1`, [bookingId]);
+    const oldStatus = oldBookingRes.rows[0]?.status;
+
     const result = await db.query(`
       UPDATE bookings
       SET status = $1
@@ -354,6 +397,17 @@ export const updateBookingStatus = async (req, res) => {
         message: "Booking not found"
       });
     }
+
+    const updatedBooking = result.rows[0];
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'UPDATE_BOOKING_STATUS',
+      targetType: 'BOOKING',
+      targetId: bookingId,
+      changes: { old_status: oldStatus, new_status: status },
+      description: `Updated booking status for ${bookingId} to ${status}`
+    });
 
     res.json({
       success: true,
@@ -417,10 +471,20 @@ export const approveReview = async (req, res) => {
       });
     }
 
+    const updatedReview = result.rows[0];
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'APPROVE_REVIEW',
+      targetType: 'REVIEW',
+      targetId: reviewId,
+      description: `Approved review ${reviewId} for package ${updatedReview.package_id}`
+    });
+
     res.json({
       success: true,
       message: "Review approved successfully",
-      review: result.rows[0]
+      review: updatedReview
     });
   } catch (err) {
     console.error("approveReview error:", err.message);
@@ -450,10 +514,20 @@ export const rejectReview = async (req, res) => {
       });
     }
 
+    const updatedReview = result.rows[0];
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'REJECT_REVIEW',
+      targetType: 'REVIEW',
+      targetId: reviewId,
+      description: `Rejected review ${reviewId}`
+    });
+
     res.json({
       success: true,
       message: "Review rejected successfully",
-      review: result.rows[0]
+      review: updatedReview
     });
   } catch (err) {
     console.error("rejectReview error:", err.message);
@@ -531,6 +605,17 @@ export const updateUserStatus = async (req, res) => {
         message: "User not found"
       });
     }
+
+    const updatedUser = result.rows[0];
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'UPDATE_USER_STATUS',
+      targetType: 'USER',
+      targetId: userId,
+      changes: { new_status: status },
+      description: `Updated status for user ${userId} to ${status}`
+    });
 
     res.json({
       success: true,
@@ -618,6 +703,15 @@ export const getCustomTourRequests = async (req, res) => {
 export const updateCustomTourStatus = async (req, res) => {
   try {
     const { requestId } = req.params;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(requestId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request ID format. Expected a UUID."
+      });
+    }
     const { 
       status, recommendations, admin_final_price, 
       approved_itinerary_json, rejection_reason, special_notes 
@@ -664,10 +758,53 @@ export const updateCustomTourStatus = async (req, res) => {
       });
     }
 
+    const updatedRequest = result.rows[0];
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'UPDATE_CUSTOM_TOUR_STATUS',
+      targetType: 'CUSTOM_TOUR',
+      targetId: requestId,
+      changes: {
+        status: status,
+        price: admin_final_price
+      },
+      description: `Updated custom tour request ${requestId} (Status: ${status}, Price: ${admin_final_price})`
+    });
+
+    // Notification Logic
+    if (status === 'approved') {
+        try {
+            // Get user_id for notification
+            const userLookup = await db.query(
+                `SELECT u.user_id 
+                 FROM chatbot_session cs 
+                 JOIN tourist t ON cs.tourist_id = t.tourist_id 
+                 JOIN users u ON t.user_id = u.user_id 
+                 WHERE cs.session_id = $1`,
+                [requestId]
+            );
+
+            if (userLookup.rows.length > 0) {
+                const userId = userLookup.rows[0].user_id;
+                await NotificationService.create({
+                    userId: userId,
+                    type: 'tour_approval',
+                    title: 'Custom Tour Approved!',
+                    message: `Your Signature AI tour "${updatedRequest.title || 'Custom Tour'}" has been approved. You can now proceed to payment.`,
+                    link: '/dashboard/custom-tours'
+                });
+                console.log(`🔔 Notification sent to user ${userId} for approved tour ${requestId}`);
+            }
+        } catch (notifErr) {
+            console.error("❌ Notification error (non-critical):", notifErr);
+        }
+    }
+
     res.json({
       success: true,
       message: "Custom tour request updated successfully",
-      request: result.rows[0]
+      request: updatedRequest
     });
   } catch (err) {
     console.error("updateCustomTourStatus error:", err);

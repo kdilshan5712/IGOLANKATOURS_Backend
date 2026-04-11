@@ -1,121 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
+<style>
+    .success-box {
+        background: #ecfdf5;
+        border: 2px solid #10b981;
+        color: #065f46;
+        padding: 25px;
+        margin: 25px 0;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .action-list {
+        background: #f8fafc;
+        padding: 25px;
+        margin: 25px 0;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+    .action-list h3 {
+        margin-top: 0;
+        color: #1e40af;
+    }
+    .cta-button {
+        display: inline-block;
+        background: #059669;
+        color: #ffffff !important;
+        padding: 14px 32px;
+        text-decoration: none;
+        border-radius: 8px;
+        margin: 25px 0;
+        font-weight: 600;
+    }
+</style>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guide Application Approved</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .header {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        .content {
-            padding: 30px 20px;
-        }
-
-        .approval-message {
-            background: #ecfdf5;
-            border-left: 4px solid #10b981;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .cta-button {
-            display: inline-block;
-            background: #10b981;
-            color: #ffffff;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-
-        .footer {
-            background: #f9fafb;
-            padding: 20px;
-            text-align: center;
-            color: #6b7280;
-            font-size: 14px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg" alt="I GO LANKA TOURS" style="max-height: 80px; margin-bottom: 10px; border-radius: 8px;">
-            <div style="font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">I GO LANKA TOURS</div>
-            <div style="font-size: 14px; font-style: italic; opacity: 0.9; margin-top: 5px; margin-bottom: 15px;">An Amazing Destination</div>
-            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
-            <h1>🎉 Application Approved!</h1>
-        </div>
-        <div class="content">
-            <p>Dear {{guideName}},</p>
-
-            <div class="approval-message">
-                <p><strong>Congratulations! Your guide application has been approved.</strong></p>
-                <p>You are now an official tour guide with I Go Lanka Tours!</p>
-            </div>
-
-            <p>You can now:</p>
-            <ul>
-                <li>Access your guide dashboard</li>
-                <li>View assigned tours</li>
-                <li>Manage your availability</li>
-                <li>Update your profile</li>
-            </ul>
-
-            <center>
-                <a href="{{loginLink}}" class="cta-button">Login to Dashboard</a>
-            </center>
-
-            <p>We're excited to have you on our team and look forward to working with you!</p>
-
-            <p>Best regards,<br><strong>I Go Lanka Tours Team</strong></p>
-        </div>
-        <div class="footer">
-            <p>
-                <strong>I GO LANKA TOURS</strong><br>
-                An Amazing Destination
-            </p>
-            <p style="margin: 10px 0;">
-                📞 <a href="tel:+94777639196" style="color: #6b7280; text-decoration: none;">+94 77 763 9196</a> | 
-                ✉️ <a href="mailto:tours.igolanka@gmail.com" style="color: #6b7280; text-decoration: none;">tours.igolanka@gmail.com</a>
-            </p>
-            <p>📍 Katunayaka, Sri Lanka</p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;">
-            <p>&copy; 2026 I GO LANKA TOURS. All rights reserved.</p>
-        </div>
+<div class="content">
+    <h2 style="color: #111827; margin: 0 0 10px 0;">🎉 Congratulations!</h2>
+    <p style="color: #374151; font-size: 16px;">Hello <strong>{{guideName}}</strong>! 👋</p>
+    
+    <div class="success-box">
+        <h3 style="margin: 0;">Your Guide Account is Approved!</h3>
+        <p style="margin: 10px 0 0 0;">You are now an official member of the I Go Lanka Tours professional network.</p>
     </div>
-</body>
 
-</html>
+    <div class="action-list">
+        <h3>🚀 Next Steps:</h3>
+        <ul style="color: #475569; padding-left: 20px;">
+            <li>Log in to your <strong>Guide Dashboard</strong></li>
+            <li>Complete your professional profile and specialties</li>
+            <li>Set your availability for upcoming tour seasons</li>
+            <li>Wait for new tour assignment notifications!</li>
+        </ul>
+    </div>
+
+    <div style="text-align: center;">
+        <a href="{{loginLink}}" class="cta-button">Go to Dashboard</a>
+    </div>
+
+    <p style="color: #374151; margin-top: 30px;">We're excited to have you showcase the beauty of Sri Lanka to travelers from around the world.</p>
+    
+    <p style="color: #374151;">Welcome aboard,<br><strong>I Go Lanka Tours Admin Team</strong></p>
+</div>

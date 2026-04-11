@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
+import { recordAuditLog } from "../utils/auditLogger.js";
 
 /* ======================================================
    GET ALL PAYOUT REQUESTS
@@ -115,6 +116,19 @@ export const updatePayoutStatus = async (req, res) => {
     // Here we could add a new email template for payouts
     // For now, let's just log it.
     console.log(`[PAYOUT] Request ${id} updated to ${status} by admin ${adminId}`);
+
+    // RECORD AUDIT LOG
+    await recordAuditLog(req, {
+      actionType: 'UPDATE_PAYOUT_STATUS',
+      targetType: 'PAYOUT_REQUEST',
+      targetId: id,
+      changes: {
+        old_status: payout.status,
+        new_status: status,
+        admin_notes: admin_notes
+      },
+      description: `Payout request for ${payout.guide_name} (${payout.amount}) marked as ${status}`
+    });
 
     res.json({
       success: true,

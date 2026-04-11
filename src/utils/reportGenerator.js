@@ -401,6 +401,127 @@ export const generateRevenueReportPDF = async (reportData, res) => {
 };
 
 /**
+ * Generate PDF Report for Audit Logs
+ */
+export const generateAuditLogReportPDF = async (logs, res) => {
+    const doc = new PDFDocument({ margin: 50, bufferPages: true, layout: 'landscape' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=audit-log-report.pdf');
+
+    doc.on('error', (err) => {
+        console.error('[PDF AUDIT] Document error:', err.message);
+        if (!res.writableEnded) res.end();
+    });
+
+    res.on('error', (err) => {
+        console.error('[PDF AUDIT] Response stream error:', err.message);
+        doc.destroy?.();
+    });
+
+    doc.pipe(res);
+
+    try {
+        // Branding and Title
+        doc.moveDown(8);
+        doc.fontSize(18).font('Helvetica-Bold').fillColor('#111827')
+            .text('System Audit & Security Logs', { align: 'left' });
+        doc.fontSize(10).font('Helvetica').fillColor('#6b7280')
+            .text(`Generated on: ${new Date().toLocaleString()}`);
+        doc.moveDown(2);
+
+        // Table Header
+        const tableTop = doc.y;
+        const colX = [50, 160, 260, 400, 560, 700]; // Adjusted for landscape
+
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#374151');
+        doc.text('Timestamp', colX[0], tableTop);
+        doc.text('Admin', colX[1], tableTop);
+        doc.text('Action', colX[2], tableTop);
+        doc.text('Description', colX[3], tableTop);
+        doc.text('Target', colX[4], tableTop);
+        doc.text('IP Address', colX[5], tableTop);
+
+        doc.moveTo(50, tableTop + 15).lineTo(750, tableTop + 15).strokeColor('#374151').lineWidth(0.5).stroke();
+
+        // Table Body
+        let y = tableTop + 25;
+        doc.font('Helvetica').fillColor('#4b5563');
+
+        logs.forEach((log) => {
+            if (y > 520) { // Landscape height is approx 600
+                doc.addPage();
+                y = 130;
+            }
+
+            const timestamp = new Date(log.created_at).toLocaleString();
+            const admin = `${log.admin_name || 'System'}\n(${log.admin_email || 'N/A'})`;
+            const action = log.action_type.replace(/_/g, ' ');
+
+            doc.fontSize(8);
+            doc.text(timestamp, colX[0], y, { width: 100 });
+            doc.text(admin, colX[1], y, { width: 90 });
+            doc.text(action, colX[2], y, { width: 130 });
+            doc.text(log.description || 'N/A', colX[3], y, { width: 150 });
+            doc.text(`${log.target_type}\n#${log.target_id || 'N/A'}`, colX[4], y, { width: 130 });
+            doc.text(log.ip_address || 'Internal', colX[5], y);
+
+            const rowHeight = Math.max(
+                doc.heightOfString(admin, { width: 90 }),
+                doc.heightOfString(log.description || '', { width: 150 })
+            ) + 10;
+
+            y += rowHeight;
+            doc.moveTo(50, y - 5).lineTo(750, y - 5).strokeColor('#f3f4f6').lineWidth(0.5).stroke();
+        });
+
+        // Apply shared branding after all pages are created
+        drawBranding(doc);
+
+    } catch (err) {
+        console.error('[PDF AUDIT] Error building report:', err.message);
+    } finally {
+        doc.end();
+    }
+};
+
+/**
+ * Generate CSV Report for Audit Logs
+ */
+export const generateAuditLogReportCSV = async (logs, res) => {
+    const csvStringifier = createObjectCsvStringifier({
+        header: [
+            { id: 'created_at', title: 'Timestamp' },
+            { id: 'admin_name', title: 'Admin' },
+            { id: 'admin_email', title: 'Email' },
+            { id: 'action_type', title: 'Action' },
+            { id: 'description', title: 'Description' },
+            { id: 'target_type', title: 'Target Type' },
+            { id: 'target_id', title: 'Target ID' },
+            { id: 'ip_address', title: 'IP Address' }
+        ]
+    });
+
+    const records = logs.map(l => ({
+        created_at: new Date(l.created_at).toLocaleString(),
+        admin_name: l.admin_name || 'System',
+        admin_email: l.admin_email || 'N/A',
+        action_type: l.action_type,
+        description: l.description,
+        target_type: l.target_type,
+        target_id: l.target_id,
+        ip_address: l.ip_address
+    }));
+
+    const header = csvStringifier.getHeaderString();
+    const content = csvStringifier.stringifyRecords(records);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=audit-log-report.csv');
+    res.send(header + content);
+};
+
+/**
  * Generate CSV Report for Revenue
  */
 export const generateRevenueReportCSV = async (reportData, res) => {
@@ -439,10 +560,9 @@ export const generateRevenueReportCSV = async (reportData, res) => {
 };
 
 export default {
-    generateBookingReportPDF,
-    generateBookingReportCSV,
-    generateUserReportCSV,
     generateBookingInvoicePDF,
     generateRevenueReportPDF,
-    generateRevenueReportCSV
+    generateRevenueReportCSV,
+    generateAuditLogReportPDF,
+    generateAuditLogReportCSV
 };

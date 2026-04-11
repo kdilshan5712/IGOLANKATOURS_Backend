@@ -7,6 +7,8 @@ import pool from '../config/db.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { emailWrapper } from './emailTemplates.js';
+
 /**
  * Email Service
  * Handles all email sending functionality using Nodemailer
@@ -14,7 +16,7 @@ const __dirname = path.dirname(__filename);
 
 // Create reusable transporter
 const createTransporter = () => {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT) || 587,
         secure: false, // true for 465, false for other ports
@@ -75,7 +77,7 @@ export const sendEmail = async (to, subject, htmlContent, textContent = '') => {
             from: `"I Go Lanka Tours" <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
             to,
             subject,
-            html: htmlContent,
+            html: emailWrapper(htmlContent),
             text: textContent || htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
         };
 

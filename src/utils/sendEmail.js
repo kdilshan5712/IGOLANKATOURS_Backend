@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
  * Sends emails using NodeMailer
  * Fails silently to prevent blocking API responses
  */
+import { emailWrapper } from "./emailTemplates.js";
 
 // Validate email configuration
 const isEmailConfigured = () => {
@@ -85,49 +86,26 @@ export const emailTemplates = {
    */
   touristWelcome: (fullName) => ({
     subject: "Welcome to I GO LANKA TOURS! 🌴",
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🌴 Welcome to I GO LANKA TOURS!</h1>
-          </div>
-          <div class="content">
-            <h2>Hello ${fullName}! 👋</h2>
-            <p>Welcome to Sri Lanka's premier travel platform! We're excited to have you join our community.</p>
-            
-            <p><strong>Your account is now active!</strong></p>
-            
-            <p>You can now:</p>
-            <ul>
-              <li>Browse amazing tour packages</li>
-              <li>Connect with verified tour guides</li>
-              <li>Book unforgettable experiences in Sri Lanka</li>
-              <li>Manage your travel itineraries</li>
-            </ul>
-            
-            <p>Start exploring the beauty of Sri Lanka today!</p>
-            
-            <div class="footer">
-              <p>If you have any questions, feel free to contact our support team.</p>
-              <p>&copy; ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
+    html: emailWrapper(`
+      <h2 style="color: #111827; margin: 0 0 20px 0;">Hello ${fullName}! 👋</h2>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Welcome to Sri Lanka's premier travel platform! We're excited to have you join our community.</p>
+      
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;"><strong>Your account is now active!</strong></p>
+      
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">You can now:</p>
+      <ul style="color: #374151; font-size: 16px; line-height: 1.6;">
+        <li>Browse amazing tour packages</li>
+        <li>Connect with verified tour guides</li>
+        <li>Book unforgettable experiences in Sri Lanka</li>
+        <li>Manage your travel itineraries</li>
+      </ul>
+      
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Start exploring the beauty of Sri Lanka today!</p>
+      
+      <div style="text-align: center; margin-top: 30px;">
+        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" style="display: inline-block; background: #1e40af; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600;">Start Exploring</a>
+      </div>
+    `)
   }),
 
   /**
@@ -135,58 +113,28 @@ export const emailTemplates = {
    */
   emailVerification: (fullName, verificationLink) => ({
     subject: "Verify Your Email - I GO LANKA TOURS ✉️",
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 15px 40px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-          .button:hover { opacity: 0.9; }
-          .info-box { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; border-radius: 5px; }
-          .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          .link-text { word-break: break-all; color: #667eea; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>📧 Verify Your Email</h1>
-          </div>
-          <div class="content">
-            <h2>Hello ${fullName}! 👋</h2>
-            <p>Thank you for registering with <strong>I GO LANKA TOURS</strong>!</p>
-            
-            <p>To complete your registration and activate your account, please verify your email address by clicking the button below:</p>
-            
-            <div style="text-align: center;">
-              <a href="${verificationLink}" class="button">Verify Email Address</a>
-            </div>
-            
-            <div class="info-box">
-              <strong>⏰ Important:</strong> This verification link will expire in <strong>24 hours</strong>.
-            </div>
-            
-            <p>If the button doesn't work, copy and paste this link into your browser:</p>
-            <p class="link-text">${verificationLink}</p>
-            
-            <div class="warning">
-              <strong>⚠️ Security Notice:</strong> If you didn't create an account with I GO LANKA TOURS, please ignore this email.
-            </div>
-            
-            <div class="footer">
-              <p>Need help? Contact us at support@igolankatours.com</p>
-              <p>&copy; ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
+    html: emailWrapper(`
+      <h2 style="color: #111827; margin: 0 0 20px 0;">Verify Your Email</h2>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hello ${fullName}! 👋</p>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Thank you for registering with <strong>I GO LANKA TOURS</strong>!</p>
+      
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">To complete your registration and activate your account, please verify your email address by clicking the button below:</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${verificationLink}" style="display: inline-block; background: #1e40af; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.2);">Verify Email Address</a>
+      </div>
+      
+      <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <strong style="color: #1e40af;">⏰ Important:</strong> This verification link will expire in <strong>24 hours</strong>.
+      </div>
+      
+      <p style="color: #64748b; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="word-break: break-all; color: #3b82f6; font-size: 12px; font-family: monospace;">${verificationLink}</p>
+      
+      <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <strong style="color: #92400e;">⚠️ Security Notice:</strong> If you didn't create an account with I GO LANKA TOURS, please ignore this email.
+      </div>
+    `)
   }),
 
   /**
@@ -194,65 +142,28 @@ export const emailTemplates = {
    */
   passwordReset: (fullName, resetLink) => ({
     subject: "Reset Your Password - I GO LANKA TOURS 🔐",
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .button { display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white !important; padding: 15px 40px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-          .button:hover { opacity: 0.9; }
-          .info-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }
-          .warning { background: #ffebee; border-left: 4px solid #f44336; padding: 15px; margin: 20px 0; border-radius: 5px; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          .link-text { word-break: break-all; color: #f5576c; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🔐 Password Reset Request</h1>
-          </div>
-          <div class="content">
-            <h2>Hello ${fullName}! 👋</h2>
-            <p>We received a request to reset your password for your <strong>I GO LANKA TOURS</strong> account.</p>
-            
-            <p>Click the button below to create a new password:</p>
-            
-            <div style="text-align: center;">
-              <a href="${resetLink}" class="button">Reset Password</a>
-            </div>
-            
-            <div class="info-box">
-              <strong>⏰ Important:</strong> This link will expire in <strong>1 hour</strong> for security reasons.
-            </div>
-            
-            <p>If the button doesn't work, copy and paste this link into your browser:</p>
-            <p class="link-text">${resetLink}</p>
-            
-            <div class="warning">
-              <strong>⚠️ Security Alert:</strong> If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
-            </div>
-            
-            <p>For your security:</p>
-            <ul>
-              <li>Never share your password with anyone</li>
-              <li>Use a strong, unique password</li>
-              <li>This link can only be used once</li>
-            </ul>
-            
-            <div class="footer">
-              <p>Need help? Contact us at support@igolankatours.com</p>
-              <p>&copy; ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
+    html: emailWrapper(`
+      <h2 style="color: #111827; margin: 0 0 20px 0;">Password Reset Request</h2>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hello ${fullName}! 👋</p>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">We received a request to reset your password for your <strong>I GO LANKA TOURS</strong> account.</p>
+      
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Click the button below to create a new password:</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${resetLink}" style="display: inline-block; background: #dc2626; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.2);">Reset Password</a>
+      </div>
+      
+      <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <strong style="color: #92400e;">⏰ Important:</strong> This link will expire in <strong>1 hour</strong> for security reasons.
+      </div>
+      
+      <p style="color: #64748b; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="word-break: break-all; color: #dc2626; font-size: 12px; font-family: monospace;">${resetLink}</p>
+      
+      <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <strong style="color: #991b1b;">⚠️ Security Alert:</strong> If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
+      </div>
+    `)
   }),
 
   /**

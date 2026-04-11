@@ -49,6 +49,8 @@ deposit_amount: numeric
 balance_amount: numeric
 last_reminder_sent_at: timestamp without time zone
 commission_amount: numeric
+coupon_id: uuid
+discount_amount: numeric
 
 --- tour_packages ---
 package_id: uuid

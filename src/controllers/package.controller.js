@@ -164,7 +164,14 @@ export const getAllPackages = async (req, res) => {
 export const getPackageById = async (req, res) => {
   const { id } = req.params;
 
-  // No validation needed - PostgreSQL will handle UUID format
+  // Validate UUID format to prevent database syntax errors
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid package ID format. Expected a UUID."
+    });
+  }
 
   try {
     // Fetch package details

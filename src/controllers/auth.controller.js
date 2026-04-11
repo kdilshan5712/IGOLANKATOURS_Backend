@@ -1,6 +1,9 @@
 import db from "../config/db.js";
+import { OAuth2Client } from "google-auth-library";
+import axios from "axios";
+
 import { hashPassword, comparePassword } from "../utils/hash.js";
-import { signToken } from "../utils/jwt.js";
+import { signToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 import {
   generateEmailVerifyToken,
@@ -11,6 +14,25 @@ import {
   getRemainingCooldown,
   TOKEN_CONFIG
 } from "../utils/tokens.js";
+
+const REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+
+const setRefreshTokenCookie = (res, token) => {
+  res.cookie(REFRESH_TOKEN_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+};
+
+const clearRefreshTokenCookie = (res) => {
+  res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+};
 
 /* ======================================================
    TOURIST REGISTER (DEFAULT ROLE)
@@ -170,6 +192,13 @@ export const registerTourist = async (req, res) => {
       role: user.role
     });
 
+    const refreshToken = signRefreshToken({
+      user_id: user.user_id,
+      role: user.role
+    });
+
+    setRefreshTokenCookie(res, refreshToken);
+
     // Generate verification link
     const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verifyToken}`;
 
@@ -293,6 +322,13 @@ export const login = async (req, res) => {
       user_id: user.user_id,
       role: user.role
     });
+
+    const refreshToken = signRefreshToken({
+      user_id: user.user_id,
+      role: user.role
+    });
+
+    setRefreshTokenCookie(res, refreshToken);
 
     let profile = null;
 
@@ -765,4 +801,197 @@ export const resetPassword = async (req, res) => {
     console.error("Reset password error:", err);
     res.status(500).json({ message: "Password reset failed" });
   }
+};
+
+/* ======================================================
+   SOCIAL LOGIN (GOOGLE / FACEBOOK)
+   POST /api/auth/social-login
+   ====================================================== */
+let googleClient;
+
+export const socialLogin = async (req, res) => {
+  try {
+    const { provider, credential, accessToken } = req.body;
+    let email, name, providerId, photo;
+
+    if (provider === "google") {
+      if (!process.env.GOOGLE_CLIENT_ID) {
+        return res.status(500).json({ message: "Google Client ID not configured on server." });
+      }
+      if (!googleClient) {
+        googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      }
+      // Verify Google Token
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      email = payload.email.toLowerCase();
+      name = payload.name;
+      providerId = payload.sub;
+      photo = payload.picture;
+    } else if (provider === "facebook") {
+      // Verify Facebook Access Token
+      const fbRes = await axios.get(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}`);
+      const fbData = fbRes.data;
+      if (!fbData.email) {
+        return res.status(400).json({ message: "Facebook account must have an associated email." });
+      }
+      email = fbData.email.toLowerCase();
+      name = fbData.name;
+      providerId = fbData.id;
+      photo = fbData.picture?.data?.url;
+    } else {
+      return res.status(400).json({ message: "Invalid provider" });
+    }
+
+    // 1. Check if user exists by provider ID
+    let userResult = await db.query(
+      `SELECT user_id, email, role, status, email_verified FROM users WHERE ${provider}_id = $1`,
+      [providerId]
+    );
+
+    let user;
+
+    if (userResult.rows.length > 0) {
+      user = userResult.rows[0];
+    } else {
+      // 2. Check if user exists by email (link accounts)
+      userResult = await db.query(
+        `SELECT user_id, email, role, status, email_verified, google_id, facebook_id FROM users WHERE email = $1`,
+        [email]
+      );
+
+      if (userResult.rows.length > 0) {
+        user = userResult.rows[0];
+        // Link the provider ID to existing account
+        await db.query(
+          `UPDATE users SET ${provider}_id = $1, email_verified = true WHERE user_id = $2`,
+          [providerId, user.user_id]
+        );
+        user.email_verified = true;
+      } else {
+        // 3. Create NEW user
+        const newUserResult = await db.query(
+          `INSERT INTO users (email, role, status, email_verified, ${provider}_id)
+           VALUES ($1, 'tourist', 'active', true, $2)
+           RETURNING user_id, email, role, status, email_verified`,
+          [email, providerId]
+        );
+        user = newUserResult.rows[0];
+
+        // Create tourist profile
+        await db.query(
+          `INSERT INTO tourist (user_id, full_name, profile_photo)
+           VALUES ($1, $2, $3)`,
+          [user.user_id, name, photo]
+        );
+      }
+    }
+
+    // Check account status
+    if (user.status !== "active") {
+      return res.status(403).json({ message: `Account is ${user.status}. Please contact support.` });
+    }
+
+    // Issue JWT
+    const token = signToken({
+      user_id: user.user_id,
+      role: user.role
+    });
+
+    const refreshToken = signRefreshToken({
+      user_id: user.user_id,
+      role: user.role
+    });
+
+    setRefreshTokenCookie(res, refreshToken);
+
+    // Fetch full profile for response
+    let profile = { full_name: name, profile_photo: photo };
+    if (user.role === "tourist") {
+        const pRes = await db.query(`SELECT full_name, profile_photo, country, phone FROM tourist WHERE user_id = $1`, [user.user_id]);
+        if (pRes.rows.length > 0) profile = pRes.rows[0];
+    }
+
+    res.json({
+      message: "Social login successful",
+      token,
+      user: {
+        id: user.user_id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        email_verified: user.email_verified,
+        full_name: profile.full_name,
+        name: profile.full_name,
+        profile_photo: profile.profile_photo,
+        country: profile.country || null,
+        phone: profile.phone || null
+      }
+    });
+
+  } catch (err) {
+    console.error("Social login error:", err);
+    res.status(500).json({ message: "Social authentication failed" });
+  }
+};
+
+/* ======================================================
+   REFRESH ACCESS TOKEN
+   POST /api/auth/refresh
+   ====================================================== */
+export const refreshToken = async (req, res) => {
+  try {
+    const token = req.cookies[REFRESH_TOKEN_COOKIE_NAME];
+
+    if (!token) {
+      return res.status(401).json({ message: "Refresh token missing" });
+    }
+
+    let payload;
+    try {
+      payload = verifyRefreshToken(token);
+    } catch (err) {
+      return res.status(403).json({ message: "Invalid or expired refresh token" });
+    }
+
+    // Optional: Check if user still exists/is active in database
+    const userRes = await db.query(
+      "SELECT user_id, role, status FROM users WHERE user_id = $1",
+      [payload.user_id]
+    );
+
+    if (userRes.rows.length === 0 || userRes.rows[0].status !== "active") {
+      clearRefreshTokenCookie(res);
+      return res.status(403).json({ message: "User account is inactive or not found" });
+    }
+
+    const { user_id, role } = userRes.rows[0];
+
+    // Issue new access token
+    const newAccessToken = signToken({ user_id, role });
+
+    // Optional: Issue a new refresh token (token rotation) for even higher security
+    const newRefreshToken = signRefreshToken({ user_id, role });
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    res.json({
+      token: newAccessToken
+    });
+
+  } catch (err) {
+    console.error("Refresh token error:", err);
+    res.status(500).json({ message: "Failed to refresh token" });
+  }
+};
+
+/* ======================================================
+   LOGOUT (CLEAR COOKIES)
+   POST /api/auth/logout
+   ====================================================== */
+export const logout = async (req, res) => {
+  clearRefreshTokenCookie(res);
+  res.json({ message: "Logged out successfully" });
 };

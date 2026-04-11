@@ -3,47 +3,52 @@
  * Professional, branded email templates for all notification types
  */
 
-const BRAND_COLOR = '#2563eb'; // Blue
-const ACCENT_COLOR = '#f59e0b'; // Gold
+const BRAND_COLOR = '#1e40af'; // Solid Blue
+const ACCENT_COLOR = '#fbbf24'; // Vivid Gold
+const LOGO_URL = 'https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg';
 
-const emailHeader = `
-  <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 40px 30px; text-align: center;">
-    <img src="https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg" alt="I GO LANKA TOURS" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 15px; border: 3px solid rgba(255,255,255,0.2);">
-    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">I GO LANKA TOURS</h1>
-    <p style="color: #fbbf24; margin: 5px 0 0 0; font-size: 16px; font-weight: 500; font-style: italic;">An Amazing Destination</p>
+export const emailHeader = `
+  <div style="background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%); padding: 50px 30px; text-align: center;">
+    <a href="${process.env.FRONTEND_URL || '#'}" style="text-decoration: none;">
+      <img src="${LOGO_URL}" alt="I GO LANKA TOURS" style="width: 90px; height: 90px; border-radius: 50%; margin-bottom: 20px; border: 4px solid rgba(255,255,255,0.15); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
+      <h1 style="color: white; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">I GO LANKA TOURS</h1>
+      <p style="color: ${ACCENT_COLOR}; margin: 8px 0 0 0; font-size: 18px; font-weight: 500; font-style: italic; letter-spacing: 1px;">An Amazing Destination</p>
+    </a>
   </div>
 `;
 
-const emailFooter = `
-  <div style="background: #f8fafc; padding: 40px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
-    <div style="margin-bottom: 25px;">
-      <h4 style="color: #1e293b; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Contact Us</h4>
-      <p style="color: #64748b; font-size: 14px; margin: 5px 0;">📞 +94 77 763 9196  |  ✉️ tours.igolanka@gmail.com</p>
-      <p style="color: #64748b; font-size: 14px; margin: 5px 0;">📍 Katunayaka, Sri Lanka</p>
+export const emailFooter = `
+  <div style="background: #0f172a; padding: 50px 30px; text-align: center; color: #94a3b8;">
+    <div style="margin-bottom: 30px;">
+      <img src="${LOGO_URL}" alt="Logo" style="width: 40px; height: 40px; border-radius: 50%; opacity: 0.6; margin-bottom: 15px;">
+      <h4 style="color: white; margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">Connect With Us</h4>
+      <p style="font-size: 14px; margin: 8px 0; color: #cbd5e1;">📞 +94 77 763 9196  |  ✉️ tours.igolanka@gmail.com</p>
+      <p style="font-size: 14px; margin: 8px 0; color: #cbd5e1;">📍 Katunayaka, Sri Lanka</p>
     </div>
-    <div style="border-top: 1px solid #f1f5f9; padding-top: 20px;">
-      <p style="color: #94a3b8; font-size: 13px; margin: 0 0 5px 0;">
-        © 2026 I GO LANKA TOURS. All rights reserved.
+    <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px;">
+      <p style="font-size: 12px; margin: 0 0 10px 0; color: #64748b;">
+        © ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.
       </p>
-      <p style="color: #cbd5e1; font-size: 11px; margin: 0;">
-        You're receiving this because you booked a tour with us. This is an automated notification.
+      <p style="font-size: 10px; margin: 0; color: #475569; max-width: 400px; margin: 0 auto; line-height: 1.5;">
+        This is an automated notification from I GO LANKA TOURS. Please do not reply directly to this email. 
+        If you have questions, contact our support team at the email above.
       </p>
     </div>
   </div>
 `;
 
-const emailWrapper = (content) => `
+export const emailWrapper = (content) => `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iGo Lanka Tours</title>
+  <title>I GO LANKA TOURS</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb;">
-  <div style="max-width: 600px; margin: 0 auto; background: white;">
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; -webkit-font-smoothing: antialiased;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
     ${emailHeader}
-    <div style="padding: 40px 30px;">
+    <div style="padding: 50px 40px; background: white;">
       ${content}
     </div>
     ${emailFooter}

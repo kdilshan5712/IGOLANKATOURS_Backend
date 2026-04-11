@@ -1,151 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
+<style>
+    .cancellation-box {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 25px;
+        margin: 25px 0;
+        border-radius: 8px;
+    }
+    .info-row {
+        margin: 10px 0;
+        color: #374151;
+    }
+    .label {
+        font-weight: 600;
+        color: #991b1b;
+    }
+</style>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Cancelled</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .header {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        .content {
-            padding: 30px 20px;
-        }
-
-        .cancellation-details {
-            background: #fffbeb;
-            border-left: 4px solid #f59e0b;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .cancellation-details h2 {
-            margin-top: 0;
-            color: #f59e0b;
-            font-size: 20px;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            font-weight: 600;
-            color: #6b7280;
-        }
-
-        .detail-value {
-            color: #111827;
-            font-weight: 500;
-        }
-
-        .refund-notice {
-            background: #dbeafe;
-            border: 1px solid #3b82f6;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 20px 0;
-        }
-
-        .footer {
-            background: #f9fafb;
-            padding: 20px;
-            text-align: center;
-            color: #6b7280;
-            font-size: 14px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg" alt="I GO LANKA TOURS" style="max-height: 80px; margin-bottom: 10px; border-radius: 8px;">
-            <div style="font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">I GO LANKA TOURS</div>
-            <div style="font-size: 14px; font-style: italic; opacity: 0.9; margin-top: 5px; margin-bottom: 15px;">An Amazing Destination</div>
-            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
-            <h1>Booking Cancelled</h1>
+<div class="content">
+    <h2 style="color: #ef4444; margin: 0 0 10px 0;">Booking Cancelled</h2>
+    <p style="color: #374151; font-size: 16px;">Dear {{userName}},</p>
+    <p style="color: #374151;">We're writing to confirm that your booking for <strong>{{packageName}}</strong> has been cancelled as requested.</p>
+    
+    <div class="cancellation-box">
+        <div class="info-row">
+            <span class="label">Booking Reference:</span> {{bookingReference}}
         </div>
-        <div class="content">
-            <p>Dear {{userName}},</p>
-            <p>Your booking has been cancelled as requested.</p>
-
-            <div class="cancellation-details">
-                <h2>Cancellation Details</h2>
-                <div class="detail-row">
-                    <span class="detail-label">Booking Reference:</span>
-                    <span class="detail-value">{{bookingReference}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Package:</span>
-                    <span class="detail-value">{{packageName}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Refund Amount:</span>
-                    <span class="detail-value">{{refundAmount}}</span>
-                </div>
-            </div>
-
-            <div class="refund-notice">
-                <strong>💰 Refund Processing:</strong> Your refund will be processed within 5-7 business days and will
-                be credited to your original payment method.
-            </div>
-
-            <p>We're sorry to see you cancel. If you have any feedback or would like to rebook in the future, we'd love
-                to hear from you.</p>
-
-            <p>Best regards,<br><strong>I Go Lanka Tours Team</strong></p>
-        </div>
-        <div class="footer">
-            <p>
-                <strong>I GO LANKA TOURS</strong><br>
-                An Amazing Destination
-            </p>
-            <p style="margin: 10px 0;">
-                📞 <a href="tel:+94777639196" style="color: #6b7280; text-decoration: none;">+94 77 763 9196</a> | 
-                ✉️ <a href="mailto:tours.igolanka@gmail.com" style="color: #6b7280; text-decoration: none;">tours.igolanka@gmail.com</a>
-            </p>
-            <p>📍 Katunayaka, Sri Lanka</p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;">
-            <p>&copy; 2026 I GO LANKA TOURS. All rights reserved.</p>
+        <div class="info-row">
+            <span class="label">Refund Amount:</span> <strong style="color: #b91c1c;">{{refundAmount}}</strong>
         </div>
     </div>
-</body>
 
-</html>
+    <p style="color: #475569; font-size: 15px;">
+        The refund (if applicable) will be processed back to your original payment method within 5-10 business days.
+    </p>
+
+    <p style="color: #374151; margin-top: 30px;">If you didn't request this cancellation or have any concerns, please contact our support team immediately.</p>
+    
+    <p style="color: #374151;">Best regards,<br><strong>I Go Lanka Tours Team</strong></p>
+</div>

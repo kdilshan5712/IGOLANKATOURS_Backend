@@ -5,6 +5,9 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import hpp from "hpp";
+import xss from "xss-clean";
+import cookieParser from "cookie-parser";
 import multer from "multer";
 
 import db from "./src/config/db.js";
@@ -32,6 +35,9 @@ import wishlistRoutes from "./src/routes/wishlist.routes.js";
 import faqRoutes from "./src/routes/faq.routes.js";
 import aiRoutes from "./src/routes/ai.routes.js";
 import galleryRoutes from "./src/routes/gallery.routes.js";
+import couponsRoutes from "./src/routes/coupons.routes.js";
+import adminAuditRoutes from "./src/routes/admin.audit.routes.js";
+
 
 console.log("🔄 [SERVER] Routes loaded - Version 4.0 (Security Hardened + AI Agent)");
 
@@ -41,13 +47,14 @@ const app = express();
 
 // 1. HTTP Security Headers (XSS, clickjacking, MIME sniffing, etc.)
 app.use(helmet({
-  crossOriginEmbedderPolicy: false, // Allow embeds (e.g., maps on frontend)
+  crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "script-src": ["'self'", "https://apis.google.com"], // Add any trusted external scripts here
+      "script-src": ["'self'", "https://apis.google.com"],
       "img-src": ["'self'", "data:", "https://*.supabase.co", "https://*.stripe.com", "https://*.google.com"],
-      "connect-src": ["'self'", "https://*.supabase.co", "https://*.stripe.com", "http://localhost:8000"],
+      "connect-src": ["'self'", "https://*.supabase.co", "https://*.stripe.com", "http://localhost:8000", "http://localhost:5000"],
+      "frame-ancestors": ["'none'"], // Prevent clickjacking
     },
   },
   dnsPrefetchControl: { allow: false },
@@ -61,6 +68,15 @@ app.use(helmet({
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   xssFilter: true,
 }));
+
+// 2. Cookie Parser (for secure Refresh Tokens)
+app.use(cookieParser());
+
+// 3. HTTP Parameter Pollution protection
+app.use(hpp());
+
+// 4. Data Sanitization against XSS
+app.use(xss());
 
 // 2. Restrict CORS to the known frontend origin
 const allowedOrigins = [
@@ -214,6 +230,13 @@ app.use("/api/faqs", faqRoutes);
 
 // AI Agent routes (Database side-effects)
 app.use("/api/ai", aiRoutes);
+
+// Coupons (public validation)
+app.use("/api/coupons", couponsRoutes);
+
+// Admin Audit Logs
+app.use("/api/admin/audit-logs", adminAuditRoutes);
+
 
 // AI Agent — proxy to Python FastAPI microservice on port 8000
 // The Python service handles: /api/ai/chat, /api/ai/weather, /api/ai/recommend

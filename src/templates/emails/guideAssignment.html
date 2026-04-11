@@ -1,158 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
+<style>
+    .assignment-box {
+        background: #f5f3ff;
+        border-left: 4px solid #7c3aed;
+        padding: 25px;
+        margin: 25px 0;
+        border-radius: 8px;
+    }
+    .assignment-box h3 {
+        margin-top: 0;
+        color: #7c3aed;
+        border-bottom: 1px solid #ddd6fe;
+        padding-bottom: 10px;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #ddd6fe;
+    }
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+    .label {
+        font-weight: 600;
+        color: #6b21a8;
+    }
+    .value {
+        color: #1e1b4b;
+    }
+</style>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Tour Assignment</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .header {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            color: #ffffff;
-            padding: 30px 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        .content {
-            padding: 30px 20px;
-        }
-
-        .tour-details {
-            background: #faf5ff;
-            border-left: 4px solid #8b5cf6;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .tour-details h2 {
-            margin-top: 0;
-            color: #8b5cf6;
-            font-size: 20px;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            font-weight: 600;
-            color: #6b7280;
-        }
-
-        .detail-value {
-            color: #111827;
-            font-weight: 500;
-        }
-
-        .cta-button {
-            display: inline-block;
-            background: #8b5cf6;
-            color: #ffffff;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-
-        .footer {
-            background: #f9fafb;
-            padding: 20px;
-            text-align: center;
-            color: #6b7280;
-            font-size: 14px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg" alt="I GO LANKA TOURS" style="max-height: 80px; margin-bottom: 10px; border-radius: 8px;">
-            <div style="font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">I GO LANKA TOURS</div>
-            <div style="font-size: 14px; font-style: italic; opacity: 0.9; margin-top: 5px; margin-bottom: 15px;">An Amazing Destination</div>
-            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
-            <h1>🗺️ New Tour Assignment</h1>
+<div class="content">
+    <h2 style="color: #7c3aed; margin: 0 0 10px 0;">🎯 New Tour Assignment</h2>
+    <p style="color: #374151; font-size: 16px;">Hello <strong>{{guideName}}</strong>,</p>
+    <p style="color: #374151;">Great news! You have been assigned to guide an upcoming tour. Please review the details below.</p>
+    
+    <div class="assignment-box">
+        <h3>Assignment Details</h3>
+        <div class="detail-row">
+            <span class="label">Booking Ref:</span>
+            <span class="value" style="font-family: monospace; font-weight: bold;">{{bookingReference}}</span>
         </div>
-        <div class="content">
-            <p>Dear {{guideName}},</p>
-            <p>You have been assigned to a new tour! Please review the details below.</p>
-
-            <div class="tour-details">
-                <h2>Tour Details</h2>
-                <div class="detail-row">
-                    <span class="detail-label">Booking Reference:</span>
-                    <span class="detail-value">{{bookingReference}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Package:</span>
-                    <span class="detail-value">{{packageName}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Travel Date:</span>
-                    <span class="detail-value">{{travelDate}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Tourist Name:</span>
-                    <span class="detail-value">{{touristName}}</span>
-                </div>
-            </div>
-
-            <p>Please log in to your guide dashboard to view complete tour details and prepare for the tour.</p>
-
-            <center>
-                <a href="http://localhost:5173/guide/bookings" class="cta-button">View Tour Details</a>
-            </center>
-
-            <p>If you have any questions or concerns, please contact the admin team.</p>
-
-            <p>Best regards,<br><strong>I Go Lanka Tours Team</strong></p>
+        <div class="detail-row">
+            <span class="label">Package:</span>
+            <span class="value">{{packageName}}</span>
         </div>
-        <div class="footer">
-            <p>
-                <strong>I GO LANKA TOURS</strong><br>
-                An Amazing Destination
-            </p>
-            <p style="margin: 10px 0;">
-                📞 <a href="tel:+94777639196" style="color: #6b7280; text-decoration: none;">+94 77 763 9196</a> | 
-                ✉️ <a href="mailto:tours.igolanka@gmail.com" style="color: #6b7280; text-decoration: none;">tours.igolanka@gmail.com</a>
-            </p>
-            <p>📍 Katunayaka, Sri Lanka</p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;">
-            <p>&copy; 2026 I GO LANKA TOURS. All rights reserved.</p>
+        <div class="detail-row">
+            <span class="label">Tourist:</span>
+            <span class="value">{{touristName}}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Travel Date:</span>
+            <span class="value">{{travelDate}}</span>
         </div>
     </div>
-</body>
 
-</html>
+    <p style="color: #4c1d95; font-size: 15px; background: #ede9fe; padding: 15px; border-radius: 6px;">
+        💡 <strong>Instruction:</strong> Please log in to your dashboard to view the full itinerary, special requests, and contact information for the tourist.
+    </p>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/guide/bookings" style="display: inline-block; background: #7c3aed; color: white !important; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600;">View Full Details</a>
+    </div>
+    
+    <p style="color: #374151; margin-top: 30px;">If you have any questions or have a scheduling conflict, please contact the admin team immediately.</p>
+    
+    <p style="color: #374151;">Happy Guiding,<br><strong>I Go Lanka Tours Team</strong></p>
+</div>
