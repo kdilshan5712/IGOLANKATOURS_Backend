@@ -1,5 +1,7 @@
 import db from '../config/db.js';
-import { sendEmail, emailTemplates } from './sendEmail.js';
+import { sendEmail } from './emailService.js';
+import { emailTemplates } from './emailTemplates.js';
+import { sendSMS, getShortMessage } from './smsService.js';
 
 /**
  * Notification Service
@@ -28,6 +30,16 @@ export const NotificationService = {
                     await this.sendEmailNotification(userId, type, { title, message, link, ...emailData });
                 } catch (emailError) {
                     console.error('[NOTIFICATION] Email send failed (non-critical):', emailError.message);
+                }
+            }
+
+            // Send SMS if enabled and it's a "special" event
+            const specialTypes = ['booking', 'guide_assignment', 'payment_reminder', 'admin_action'];
+            if (specialTypes.includes(type)) {
+                try {
+                    await this.sendSMSNotification(userId, type, { title, message, ...emailData });
+                } catch (smsError) {
+                    console.error('[NOTIFICATION] SMS send failed (non-critical):', smsError.message);
                 }
             }
 
@@ -71,6 +83,42 @@ export const NotificationService = {
             return false;
         } catch (error) {
             console.error('[NOTIFICATION] Email notification error:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Send SMS notification based on type
+     */
+    async sendSMSNotification(userId, type, data) {
+        try {
+            // Get user phone and name
+            const userResult = await db.query(
+                `SELECT COALESCE(t.phone, tg.contact_number) as phone,
+                        COALESCE(t.full_name, tg.full_name) as full_name
+                 FROM users u
+                 LEFT JOIN tourist t ON u.user_id = t.user_id
+                 LEFT JOIN tour_guide tg ON u.user_id = tg.user_id
+                 WHERE u.user_id = $1`,
+                [userId]
+            );
+
+            if (userResult.rows.length === 0 || !userResult.rows[0].phone) {
+                console.warn(`[NOTIFICATION] No phone number found for user ${userId}`);
+                return false;
+            }
+
+            const { phone, full_name } = userResult.rows[0];
+            const smsMessage = getShortMessage(type, { ...data, full_name });
+
+            if (smsMessage) {
+                await sendSMS(phone, smsMessage, type);
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('[NOTIFICATION] SMS notification error:', error);
             return false;
         }
     },

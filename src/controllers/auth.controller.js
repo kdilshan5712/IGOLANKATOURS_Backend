@@ -4,7 +4,8 @@ import axios from "axios";
 
 import { hashPassword, comparePassword } from "../utils/hash.js";
 import { signToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
-import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
+import { emailTemplates } from "../utils/emailTemplates.js";
+import { sendEmail, sendWelcomeEmail, sendPasswordReset } from "../utils/emailService.js";
 import {
   generateEmailVerifyToken,
   generatePasswordResetToken,
@@ -204,12 +205,11 @@ export const registerTourist = async (req, res) => {
 
     // Send verification email using new service
     try {
-      const emailService = await import("../utils/emailService.js");
       const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
-      await emailService.sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
+      await sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
 
       // Also send welcome email for new registration
-      await emailService.sendWelcomeEmail(normalizedEmail, full_name.trim());
+      await sendWelcomeEmail(normalizedEmail, full_name.trim());
 
     } catch (emailErr) {
       console.error("❌ Error sending email:", emailErr.message);
@@ -613,8 +613,7 @@ export const resendVerification = async (req, res) => {
 
     // Send email using emailService to ensure it's logged and uses unified config
     try {
-      const emailService = await import("../utils/emailService.js");
-      await emailService.sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
+      await sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
     } catch (emailErr) {
       console.error("Email send failed:", emailErr);
     }
@@ -695,7 +694,6 @@ export const forgotPassword = async (req, res) => {
 
     // Send email using new service
     try {
-      const { sendPasswordReset } = await import("../utils/emailService.js");
       await sendPasswordReset(normalizedEmail, resetToken, user.full_name);
     } catch (emailErr) {
       console.error("Password reset email send failed:", emailErr);

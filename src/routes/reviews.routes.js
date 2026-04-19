@@ -38,7 +38,7 @@ router.post(
   '/', 
   authenticate, 
   authorize('tourist'), 
-  uploadReviewImages.array('images', 5), // Accept up to 5 images
+  uploadReviewImages.array('images', 5), 
   submitReview
 );
 

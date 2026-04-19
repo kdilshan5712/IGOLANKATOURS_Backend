@@ -9,7 +9,7 @@ export const getAllApprovedReviews = async (req, res) => {
       FROM reviews r
       JOIN users u ON r.user_id = u.user_id
       LEFT JOIN tourist t ON u.user_id = t.user_id
-      JOIN tour_packages p ON r.package_id = p.package_id
+      LEFT JOIN tour_packages p ON r.package_id = p.package_id
       WHERE r.status = 'approved'
       ORDER BY r.created_at DESC
     `);
@@ -29,7 +29,7 @@ export const getApprovedReviewsByPackage = async (req, res) => {
       FROM reviews r
       JOIN users u ON r.user_id = u.user_id
       LEFT JOIN tourist t ON u.user_id = t.user_id
-      JOIN tour_packages p ON r.package_id = p.package_id
+      LEFT JOIN tour_packages p ON r.package_id = p.package_id
       WHERE r.status = 'approved' AND r.package_id = $1
       ORDER BY r.created_at DESC
     `, [packageId]);
@@ -48,7 +48,7 @@ export const getAllReviewsAdmin = async (req, res) => {
       FROM reviews r
       JOIN users u ON r.user_id = u.user_id
       LEFT JOIN tourist t ON u.user_id = t.user_id
-      JOIN tour_packages p ON r.package_id = p.package_id
+      LEFT JOIN tour_packages p ON r.package_id = p.package_id
       ORDER BY r.created_at DESC
     `);
     res.json(result.rows);

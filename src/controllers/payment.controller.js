@@ -159,11 +159,13 @@ export const confirmPayment = async (req, res) => {
                         sendEmailNotif: false // We'll send the branded email manually below
                     });
 
+                    const bookingReference = String(data.booking_id).substring(0, 8).toUpperCase();
+                    
                     // Send Branded Confirmation Email
                     await sendBookingConfirmation({
                         userEmail: data.user_email,
                         userName: data.user_name,
-                        bookingReference: data.booking_id.substring(0, 8).toUpperCase(),
+                        bookingReference: bookingReference,
                         packageName: data.package_name,
                         travelDate: data.travel_date,
                         totalPrice: data.total_price,
@@ -360,10 +362,12 @@ export const processDummyPayment = async (req, res) => {
 
             if (fullBookingRes.rows.length > 0) {
                 const data = fullBookingRes.rows[0];
+                const bookingReference = String(data.booking_id).substring(0, 8).toUpperCase();
+
                 await sendBookingConfirmation({
                     userEmail: data.user_email,
                     userName: data.user_name,
-                    bookingReference: data.booking_id.substring(0, 8).toUpperCase(),
+                    bookingReference: bookingReference,
                     packageName: data.package_name,
                     travelDate: data.travel_date,
                     totalPrice: data.total_price,

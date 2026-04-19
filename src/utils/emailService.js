@@ -73,11 +73,13 @@ export const sendEmail = async (to, subject, htmlContent, textContent = '') => {
     try {
         const transporter = createTransporter();
 
+        const isFullHtml = htmlContent.includes("<!DOCTYPE html>") || htmlContent.includes("<html");
+
         const mailOptions = {
             from: `"I Go Lanka Tours" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
             to,
             subject,
-            html: emailWrapper(htmlContent),
+            html: isFullHtml ? htmlContent : emailWrapper(htmlContent),
             text: textContent || htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
         };
 

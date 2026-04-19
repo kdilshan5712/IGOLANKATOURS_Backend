@@ -85,12 +85,12 @@ export const getAllApprovedReviews = async (req, res) => {
         r.images,
         r.created_at,
         COALESCE(t.full_name, u.email) as reviewer_name,
-        p.name as package_name,
+        COALESCE(p.name, 'Website Experience') as package_name,
         p.package_id
       FROM reviews r
       JOIN users u ON r.user_id = u.user_id
       LEFT JOIN tourist t ON u.user_id = t.user_id
-      JOIN tour_packages p ON r.package_id = p.package_id
+      LEFT JOIN tour_packages p ON r.package_id = p.package_id
       WHERE r.status = 'approved'
       ORDER BY r.created_at DESC
       LIMIT $1 OFFSET $2
@@ -183,371 +183,96 @@ export const getReviewsForGallery = async (req, res) => {
 };
 
 /**
- * 3️⃣ PROTECTED: SUBMIT REVIEW
- * Only authenticated tourists can submit reviews
- * Supports text-only OR text + images (up to 5 images)
- * Uploads images to Supabase Storage: reviews/user-uploads/<user_id>/
- * Saves image URLs in reviews.images[] array
- * Sets status to 'pending' (requires admin approval)
+ * 3️⃣ PROTECTED: SUBMIT REVIEW (Package Only)
+ * Only authenticated tourists can submit reviews for packages they've booked
  * POST /api/reviews
- * Body: { packageId, rating, title, comment }
- * Files: images (optional, multipart/form-data)
  */
 export const submitReview = async (req, res) => {
   try {
-    // Parse form data - FormData sends all values as strings
     let { packageId, rating, title, comment } = req.body;
     const userId = req.user.user_id;
-    const files = req.files; // Array of uploaded images (if any)
+    const files = req.files;
 
-    // Convert rating to integer if it's a string from FormData
-    if (typeof rating === 'string') {
-      rating = parseInt(rating, 10);
+    if (typeof rating === 'string') rating = parseInt(rating, 10);
+    
+    // Package reviews MUST have a valid packageId
+    if (!packageId || packageId === 'null') {
+      return res.status(400).json({ success: false, message: "Package ID is required" });
     }
 
-    // Ensure packageId is properly typed - keep as-is (database handles UUID/INT conversion)
-    // Don't force conversion if it's a UUID string
-    if (typeof packageId === 'string') {
-      packageId = packageId.trim();
-    } else if (typeof packageId === 'number') {
-      packageId = String(packageId);
-    }
-
-    // Validate packageId is a proper UUID format (all package IDs in this system are UUIDs)
+    if (typeof packageId === 'string') packageId = packageId.trim();
+    
+    // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(packageId)) {
-      console.log('Invalid packageId format:', packageId);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid package ID format - all packages use UUID format",
-        received: packageId
-      });
+      return res.status(400).json({ success: false, message: "Invalid package ID format" });
     }
 
-    console.log("\n================================================");
-    console.log("=== REVIEW SUBMISSION REQUEST ===");
-    console.log("================================================");
-    console.log("📝 Review data:", { packageId, rating, title, comment });
-    console.log("📸 Images uploaded:", files ? files.length : 0);
-    console.log("👤 User ID:", userId);
-
-    // ========================================
-    // VALIDATION
-    // ========================================
-    
-    // Validate required fields
-    if (!packageId) {
-      return res.status(400).json({
-        success: false,
-        message: "Package ID is required"
-      });
-    }
-
+    // Validation
     if (!rating || isNaN(rating) || rating < 1 || rating > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5"
-      });
+      return res.status(400).json({ success: false, message: "Rating must be between 1 and 5" });
     }
-
     if (!comment || comment.trim().length < 10) {
-      return res.status(400).json({
-        success: false,
-        message: "Comment must be at least 10 characters long"
-      });
+      return res.status(400).json({ success: false, message: "Comment must be at least 10 characters long" });
     }
 
-    // Validate images if provided
-    if (files && files.length > 0) {
-      const validation = validateReviewImages(files);
-      if (!validation.valid) {
-        return res.status(400).json({
-          success: false,
-          message: validation.error
-        });
-      }
-      console.log(`✅ ${files.length} images validated successfully`);
+    // Role check
+    const userResult = await db.query('SELECT role FROM users WHERE user_id = $1', [userId]);
+    if (userResult.rows[0].role !== 'tourist') {
+      return res.status(403).json({ success: false, message: "Only tourists can submit reviews" });
     }
 
-    // ========================================
-    // AUTHORIZATION CHECKS
-    // ========================================
-
-    // Check if user is tourist
-    const userCheck = await db.query(
-      'SELECT role FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-
-    if (userCheck.rows[0].role !== 'tourist') {
-      return res.status(403).json({
-        success: false,
-        message: "Only tourists can submit reviews"
-      });
-    }
-
-    // Check if package exists
-    let packageCheck;
-    try {
-      packageCheck = await db.query(
-        'SELECT package_id, name FROM tour_packages WHERE package_id = $1',
-        [packageId]
-      );
-    } catch (firstError) {
-      console.error('First packageCheck attempt failed:', firstError.code);
-      // Try casting packageId to text for comparison
-      try {
-        packageCheck = await db.query(
-          'SELECT package_id, name FROM tour_packages WHERE package_id::text = $1',
-          [String(packageId)]
-        );
-        console.log('Second packageCheck attempt succeeded with text casting');
-      } catch (secondError) {
-        console.error('Second packageCheck attempt also failed:', secondError.code);
-        throw firstError;
-      }
-    }
-
-    if (packageCheck.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Package not found"
-      });
-    }
-
-    // ========================================
-    // BOOKING VALIDATION (CRITICAL)
-    // ========================================
-    
-    // Check if user has a confirmed booking for this package
-    let bookingCheck;
-    try {
-      bookingCheck = await db.query(`
-        SELECT b.booking_id, b.status, b.travel_date
-        FROM bookings b
-        WHERE b.user_id = $1 AND b.package_id = $2 AND b.status = 'confirmed'
-        ORDER BY b.created_at DESC
-        LIMIT 1
-      `, [userId, packageId]);
-    } catch (bookError1) {
-      console.error('Booking check failed, attempting text cast:', bookError1.code);
-      try {
-        bookingCheck = await db.query(`
-          SELECT b.booking_id, b.status, b.travel_date
-          FROM bookings b
-          WHERE b.user_id = $1 AND b.package_id::text = $2 AND b.status = 'confirmed'
-          ORDER BY b.created_at DESC
-          LIMIT 1
-        `, [userId, String(packageId)]);
-      } catch (bookError2) {
-        throw bookError1;
-      }
-    }
+    // Booking validation
+    const bookingCheck = await db.query(`
+      SELECT b.booking_id FROM bookings b
+      WHERE b.user_id = $1 AND b.package_id = $2 AND b.status = 'confirmed'
+      ORDER BY b.created_at DESC LIMIT 1
+    `, [userId, packageId]);
 
     if (bookingCheck.rows.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only review packages you have booked"
-      });
+      return res.status(403).json({ success: false, message: "You can only review packages you have booked" });
     }
 
-    const booking = bookingCheck.rows[0];
-    const bookingId = booking.booking_id;
+    const bookingId = bookingCheck.rows[0].booking_id;
 
-    // Check for duplicate review (one review per booking)
-    const existingReview = await db.query(`
-      SELECT review_id FROM reviews 
-      WHERE booking_id = $1
-    `, [bookingId]);
-
+    // Duplicate check
+    const existingReview = await db.query('SELECT review_id FROM reviews WHERE booking_id = $1', [bookingId]);
     if (existingReview.rows.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: "You have already submitted a review for this booking"
-      });
+      return res.status(409).json({ success: false, message: "You have already reviewed this booking" });
     }
 
-    // ========================================
-    // IMAGE UPLOAD TO SUPABASE STORAGE
-    // ========================================
-
+    // Handle Image Uploads
     let imageUrls = [];
-    
     if (files && files.length > 0) {
-      try {
-        console.log(`📤 Uploading ${files.length} images to Supabase Storage...`);
-        console.log("📂 File details:", files.map(f => ({
-          originalName: f.originalname,
-          mimetype: f.mimetype,
-          size: f.size
-        })));
-        
-        imageUrls = await uploadReviewImages(files, userId);
-        console.log(`✅ Images uploaded successfully:`, imageUrls);
-      } catch (uploadError) {
-        console.error('❌ Image upload failed:', uploadError);
-        console.error('Upload error details:', {
-          message: uploadError.message,
-          stack: uploadError.stack,
-          fileCount: files.length
-        });
-        
-        return res.status(500).json({
-          success: false,
-          message: "Failed to upload images. Please try again.",
-          error: uploadError.message,
-          details: {
-            uploadFailed: true,
-            fileCount: files.length
-          }
-        });
-      }
-    } else {
-      console.log("ℹ️  No images provided - text-only review");
+      const validation = validateReviewImages(files);
+      if (!validation.valid) return res.status(400).json({ success: false, message: validation.error });
+      imageUrls = await uploadReviewImages(files, userId);
     }
 
-    // ========================================
-    // INSERT REVIEW INTO DATABASE
-    // ========================================
-
-    console.log("📊 Preparing database insert with values:", {
-      userId,
-      packageId,
-      packageIdType: typeof packageId,
-      bookingId,
-      rating,
-      ratingType: typeof rating,
-      hasTitle: !!title,
-      hasComment: !!comment,
-      imageCount: imageUrls.length
-    });
-
+    // Insert Review
     const result = await db.query(`
-      INSERT INTO reviews (
-        user_id, 
-        package_id,
-        booking_id, 
-        rating, 
-        title, 
-        comment, 
-        images, 
-        status, 
-        created_at
-      )
+      INSERT INTO reviews (user_id, package_id, booking_id, rating, title, comment, images, status, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW())
-      RETURNING 
-        review_id, 
-        user_id, 
-        package_id,
-        booking_id, 
-        rating, 
-        title, 
-        comment,
-        images,
-        status, 
-        created_at
-    `, [
-      userId, 
-      packageId,
-      bookingId, 
-      rating, 
-      title || null, 
-      comment,
-      imageUrls.length > 0 ? imageUrls : null
-    ]);
+      RETURNING *
+    `, [userId, packageId, bookingId, rating, title || null, comment, imageUrls.length > 0 ? imageUrls : null]);
 
     const review = result.rows[0];
 
-    console.log("✅ Review saved to database:", review.review_id)
-
-    // ========================================
-    // SEND CONFIRMATION EMAIL
-    // ========================================
-
+    // Notification Email
     try {
-      const userResult = await db.query(
-        'SELECT email, full_name FROM users u LEFT JOIN tourist t ON u.user_id = t.user_id WHERE u.user_id = $1',
-        [userId]
-      );
-
-      if (userResult.rows.length > 0) {
-        const user = userResult.rows[0];
-        const fullName = user.full_name || user.email.split('@')[0];
-        const emailContent = emailTemplates.reviewSubmitted(fullName);
-        await sendEmail(user.email, emailContent.subject, emailContent.html);
-        console.log("📧 Confirmation email sent to user");
+      const userInfo = await db.query('SELECT email, full_name FROM users u LEFT JOIN tourist t ON u.user_id = t.user_id WHERE u.user_id = $1', [userId]);
+      if (userInfo.rows.length > 0) {
+        const u = userInfo.rows[0];
+        const content = emailTemplates.reviewSubmitted(u.full_name || u.email.split('@')[0]);
+        await sendEmail(u.email, content.subject, content.html);
       }
-    } catch (emailError) {
-      // Don't fail the request if email fails
-      console.error("⚠️  Email notification failed (non-critical):", emailError.message);
-    }
+    } catch (e) { console.error("Email failed:", e.message); }
 
-    console.log("================================================\n");
-
-    // ========================================
-    // RETURN SUCCESS RESPONSE
-    // ========================================
-
-    res.status(201).json({
-      success: true,
-      message: imageUrls.length > 0 
-        ? `Review with ${imageUrls.length} image(s) submitted successfully and is pending approval`
-        : "Review submitted successfully and is pending approval",
-      review: {
-        ...review,
-        hasImages: imageUrls.length > 0,
-        imageCount: imageUrls.length
-      }
-    });
+    res.status(201).json({ success: true, message: "Review submitted successfully and is pending approval", review });
 
   } catch (err) {
-    console.error("❌ submitReview error:", err);
-    console.error("Error details:", {
-      message: err.message,
-      code: err.code,
-      detail: err.detail,
-      hint: err.hint,
-      column: err.column,
-      table: err.table
-    });
-    
-    // Check for specific database errors
-    if (err.code === '23505') { // Unique constraint violation
-      console.error('Duplicate review detected');
-      return res.status(409).json({
-        success: false,
-        message: "A review for this booking already exists"
-      });
-    } else if (err.code === '23503') { // Foreign key constraint
-      console.error('Foreign key constraint violation:', err.detail);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid package ID or booking ID - package or booking not found"
-      });
-    } else if (err.code === '22P02') { // Invalid text representation
-      console.error('Type conversion error:', err.detail);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid data format - " + (err.detail || "type mismatch"),
-        type: 'TYPE_MISMATCH'
-      });
-    }
-    
-    // Return actual error for debugging
-    res.status(500).json({
-      success: false,
-      message: "Failed to submit review",
-      error: err.message,
-      code: err.code,
-      detail: process.env.NODE_ENV === 'development' ? err.detail : undefined
-    });
+    console.error("submitReview error:", err);
+    res.status(500).json({ success: false, message: "Failed to submit review", error: err.message });
   }
 };
 
@@ -577,12 +302,12 @@ export const getAllReviewsAdmin = async (req, res) => {
         r.moderated_at,
         COALESCE(t.full_name, u.email) as reviewer_name,
         u.email as reviewer_email,
-        p.name as package_name,
+        COALESCE(p.name, 'Website Experience') as package_name,
         COALESCE(admin_t.full_name, admin_u.email) as moderated_by_name
       FROM reviews r
       JOIN users u ON r.user_id = u.user_id
       LEFT JOIN tourist t ON u.user_id = t.user_id
-      JOIN tour_packages p ON r.package_id = p.package_id
+      LEFT JOIN tour_packages p ON r.package_id = p.package_id
       LEFT JOIN users admin_u ON r.moderated_by = admin_u.user_id
       LEFT JOIN tourist admin_t ON r.moderated_by = admin_t.user_id
     `;

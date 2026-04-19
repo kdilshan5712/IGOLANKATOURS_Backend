@@ -175,10 +175,6 @@ export const createBooking = async (req, res) => {
     
     const { seasonLabel, multiplier } = pricing;
 
-    // Generate Booking Reference (e.g., BOOK-2026-A1B2C3D4)
-    const year = new Date().getFullYear();
-    const uniqueSuffix = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const booking_reference = `BOOK-${year}-${uniqueSuffix}`;
 
     // Start Transaction
     await client.query('BEGIN');
@@ -561,10 +557,6 @@ export const convertCustomToBooking = async (req, res) => {
 
     const package_id = packageInsertResult.rows[0].package_id;
 
-    // 3. Create the booking
-    const year = new Date().getFullYear();
-    const uniqueSuffix = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const booking_reference = `BOOK-CUST-${year}-${uniqueSuffix}`;
 
     const bookingInsertResult = await client.query(`
       INSERT INTO bookings 
@@ -692,10 +684,6 @@ export const acceptAndBookCustomTour = async (req, res) => {
 
     const package_id = packageInsertResult.rows[0].package_id;
 
-    // 4. Create the formal booking record
-    const year = new Date().getFullYear();
-    const uniqueSuffix = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const booking_reference = `BOOK-CUST-${year}-${uniqueSuffix}`;
 
     console.log("📝 [BOOKING] Creating custom booking with values:", {
       user_id,
