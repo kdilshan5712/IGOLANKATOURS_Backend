@@ -82,19 +82,26 @@ export const NotificationService = {
         switch (type) {
             case 'booking':
                 if (data.message?.includes('Confirmed')) {
-                    return {
-                        subject: `🎉 Booking Confirmed - ${data.packageName || 'Your Tour'}`,
-                        html: emailTemplates.touristWelcome(userName).html.replace(
-                            'Welcome to Sri Lanka',
-                            `Booking Confirmed for ${data.packageName || 'Your Tour'}`
-                        )
-                    };
+                    return emailTemplates.bookingConfirmed(
+                        userName, 
+                        data.packageName || 'Your Tour', 
+                        {
+                            booking_id: data.bookingId,
+                            travel_date: data.travelDate || new Date(),
+                            travelers: data.travelers || 1
+                        }
+                    );
                 }
                 if (data.message?.includes('Cancelled')) {
-                    return {
-                        subject: `Booking Cancellation Confirmed`,
-                        html: `<p>Hi ${userName},</p><p>${data.message}</p>`
-                    };
+                    return emailTemplates.bookingCancelled(
+                        userName, 
+                        data.packageName || 'Your Tour', 
+                        {
+                            amount: data.refundAmount || 0,
+                            percentage: data.refundPercentage || 0,
+                            status: 'Completed'
+                        }
+                    );
                 }
                 break;
 
@@ -106,7 +113,7 @@ export const NotificationService = {
                     return emailTemplates.reviewApproved(userName);
                 }
                 if (data.message?.includes('rejected') || data.message?.includes('revision')) {
-                    return emailTemplates.reviewRejected(userName, data.reason || 'Please review our guidelines');
+                    return emailTemplates.reviewRejected(userName, data.reason);
                 }
                 break;
 
@@ -116,21 +123,28 @@ export const NotificationService = {
                     return emailTemplates.guideApproved(userName);
                 }
                 if (data.message?.includes('rejected') || data.message?.includes('revision')) {
-                    return emailTemplates.guideRejected(userName, data.reason || 'Please review requirements');
+                    return emailTemplates.guideRejected(userName, data.reason);
                 }
                 break;
 
             case 'guide_assignment':
-                return {
-                    subject: '📅 New Tour Assignment',
-                    html: `<p>Hi ${userName},</p><p>${data.message}</p><p>Check your dashboard for details.</p>`
-                };
+                return emailTemplates.guideAssigned(
+                    userName, 
+                    data.guideName || 'A Professional Guide', 
+                    data.packageName || 'Your Tour', 
+                    data.tourDate || new Date()
+                );
 
             default:
-                // Generic notification email
+                // Fallback for other notification types
                 return {
-                    subject: data.title || 'Notification from iGo Lanka Tours',
-                    html: `<p>Hi ${userName},</p><p>${data.message}</p>`
+                    subject: data.title || 'Notification from I GO LANKA TOURS',
+                    html: emailTemplates.emailWrapper(`
+                        <h2 style="color: #0f172a; margin: 0 0 20px 0; font-size: 24px;">${data.title || 'New Notification'}</h2>
+                        <p style="font-size: 17px; line-height: 1.8;">Hi ${userName},</p>
+                        <p style="font-size: 17px; line-height: 1.8;">${data.message}</p>
+                        ${data.link ? `<div style="text-align: center; margin-top: 30px;"><a href="${process.env.FRONTEND_URL}${data.link}" style="display: inline-block; background: #1e3a8a; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: 600;">View Details</a></div>` : ''}
+                    `)
                 };
         }
 

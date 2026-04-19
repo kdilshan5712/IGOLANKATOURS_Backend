@@ -1,54 +1,78 @@
 /**
  * Email Templates for Notifications
- * Professional, branded email templates for all notification types
+ * Professional, branded email templates with a unified premium theme.
  */
 
-const BRAND_COLOR = '#1e40af'; // Solid Blue
-const ACCENT_COLOR = '#fbbf24'; // Vivid Gold
+const BRAND_COLOR = '#1e3a8a';     // Deep Navy Blue
+const SECONDARY_COLOR = '#1e40af';  // Royal Blue
+const ACCENT_COLOR = '#fbbf24';    // Sri Lankan Gold
+const TEXT_COLOR = '#334155';      // Slate Gray
 const LOGO_URL = 'https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg';
 
+/**
+ * Premium Email Header
+ */
 export const emailHeader = `
-  <div style="background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%); padding: 50px 30px; text-align: center;">
-    <a href="${process.env.FRONTEND_URL || '#'}" style="text-decoration: none;">
-      <img src="${LOGO_URL}" alt="I GO LANKA TOURS" style="width: 90px; height: 90px; border-radius: 50%; margin-bottom: 20px; border: 4px solid rgba(255,255,255,0.15); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
-      <h1 style="color: white; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">I GO LANKA TOURS</h1>
-      <p style="color: ${ACCENT_COLOR}; margin: 8px 0 0 0; font-size: 18px; font-weight: 500; font-style: italic; letter-spacing: 1px;">An Amazing Destination</p>
+  <div style="background: linear-gradient(135deg, ${BRAND_COLOR} 0%, #172554 100%); padding: 60px 30px; text-align: center; border-bottom: 5px solid ${ACCENT_COLOR};">
+    <a href="${process.env.FRONTEND_URL || 'https://www.igolankatours.com'}" style="text-decoration: none; display: inline-block;">
+      <img src="${LOGO_URL}" alt="I GO LANKA TOURS" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 25px; border: 4px solid rgba(255,255,255,0.2); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.5);">
+      <h1 style="color: white; margin: 0; font-size: 34px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">I GO LANKA TOURS</h1>
+      <p style="color: ${ACCENT_COLOR}; margin: 10px 0 0 0; font-size: 20px; font-weight: 500; font-style: italic; letter-spacing: 1.5px; opacity: 0.9;">An Amazing Destination</p>
     </a>
   </div>
 `;
 
+/**
+ * Premium Email Footer
+ */
 export const emailFooter = `
-  <div style="background: #0f172a; padding: 50px 30px; text-align: center; color: #94a3b8;">
-    <div style="margin-bottom: 30px;">
-      <img src="${LOGO_URL}" alt="Logo" style="width: 40px; height: 40px; border-radius: 50%; opacity: 0.6; margin-bottom: 15px;">
-      <h4 style="color: white; margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">Connect With Us</h4>
-      <p style="font-size: 14px; margin: 8px 0; color: #cbd5e1;">📞 +94 77 763 9196  |  ✉️ tours.igolanka@gmail.com</p>
-      <p style="font-size: 14px; margin: 8px 0; color: #cbd5e1;">📍 Katunayaka, Sri Lanka</p>
+  <div style="background: #0f172a; padding: 60px 40px; text-align: center; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.05);">
+    <div style="margin-bottom: 35px;">
+      <img src="${LOGO_URL}" alt="Logo" style="width: 50px; height: 50px; border-radius: 50%; opacity: 0.7; margin-bottom: 20px;">
+      <h4 style="color: white; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 700;">I GO LANKA TOURS</h4>
+      <p style="font-size: 15px; margin: 8px 0; color: #cbd5e1;">Your Gateway to Paradise In Sri Lanka</p>
+      <div style="margin: 20px 0; border-top: 1px solid rgba(255,255,255,0.1); width: 60px; display: inline-block;"></div>
+      <p style="font-size: 14px; margin: 8px 0; color: #94a3b8;">📞 +94 77 763 9196  |  ✉️ tours.igolanka@gmail.com</p>
+      <p style="font-size: 14px; margin: 8px 0; color: #94a3b8;">📍 Katunayaka, Sri Lanka</p>
     </div>
-    <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px;">
-      <p style="font-size: 12px; margin: 0 0 10px 0; color: #64748b;">
-        © ${new Date().getFullYear()} I GO LANKA TOURS. All rights reserved.
+    <div style="padding-top: 30px;">
+      <p style="font-size: 12px; margin: 0 0 12px 0; color: #64748b; letter-spacing: 0.5px;">
+        © ${new Date().getFullYear()} I GO LANKA TOURS. All Rights Reserved.
       </p>
-      <p style="font-size: 10px; margin: 0; color: #475569; max-width: 400px; margin: 0 auto; line-height: 1.5;">
-        This is an automated notification from I GO LANKA TOURS. Please do not reply directly to this email. 
-        If you have questions, contact our support team at the email above.
+      <p style="font-size: 11px; margin: 0; color: #475569; max-width: 450px; margin: 0 auto; line-height: 1.6;">
+        You've received this automated message because of your activity with I GO LANKA TOURS. 
+        Please do not reply directly to this email. For support, reach out to us at our official contact details above.
       </p>
     </div>
   </div>
 `;
 
+/**
+ * Premium Email Wrapper
+ */
 export const emailWrapper = (content) => `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <title>I GO LANKA TOURS</title>
+  <style>
+    @media screen and (max-width: 600px) {
+      .container { width: 100% !important; border-radius: 0 !important; }
+      .content { padding: 30px 20px !important; }
+      .header { padding: 40px 20px !important; }
+    }
+    body { background-color: #f8fafc; margin: 0; padding: 0; }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; -webkit-font-smoothing: antialiased;">
-  <div style="max-width: 600px; margin: 0 auto; background: white; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+<body style="margin: 0; padding: 0; font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; -webkit-font-smoothing: antialiased;">
+  <div class="container" style="max-width: 650px; margin: 40px auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);">
     ${emailHeader}
-    <div style="padding: 50px 40px; background: white;">
+    <div class="content" style="padding: 60px 50px; background: white; color: ${TEXT_COLOR}; border-radius: 0 0 20px 20px;">
       ${content}
     </div>
     ${emailFooter}
@@ -57,38 +81,111 @@ export const emailWrapper = (content) => `
 </html>
 `;
 
-const button = (text, link) => `
-  <a href="${link}" style="display: inline-block; background: ${BRAND_COLOR}; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0;">
-    ${text}
-  </a>
+const button = (text, link, color = BRAND_COLOR) => `
+  <div style="text-align: center; margin: 40px 0;">
+    <a href="${link}" style="display: inline-block; background: ${color}; color: white; padding: 18px 45px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 16px; letter-spacing: 1px; box-shadow: 0 10px 15px -3px rgba(30, 64, 175, 0.3); transition: all 0.3s ease;">
+      ${text}
+    </a>
+  </div>
 `;
 
 export const emailTemplates = {
     /**
+     * Email Verification
+     */
+    emailVerification: (fullName, verificationLink) => ({
+      subject: "Verify Your Email - I GO LANKA TOURS ✉️",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Verify Your Email Address</h2>
+        <p style="font-size: 17px; line-height: 1.8; margin-bottom: 20px;">Hello ${fullName}! 👋</p>
+        <p style="font-size: 17px; line-height: 1.8; margin-bottom: 25px;">Welcome to <strong>I GO LANKA TOURS</strong>. We're thrilled to have you on board! To ensure the security of your account, please verify your email address below.</p>
+        
+        ${button('Verify Email Address', verificationLink, SECONDARY_COLOR)}
+        
+        <div style="background: #f0f9ff; border-left: 5px solid #3b82f6; padding: 25px; margin: 35px 0; border-radius: 12px;">
+          <strong style="color: #1e40af; font-size: 16px;">⏱️ Limited Time Offer:</strong> This link is valid for <strong>24 hours</strong>. Please complete your registration promptly to start exploring Sri Lanka.
+        </div>
+        
+        <p style="color: #64748b; font-size: 14px; margin-top: 30px;">If the button above doesn't work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #3b82f6; font-size: 13px; font-family: 'Courier New', Courier, monospace; background: #f8fafc; padding: 15px; border-radius: 8px;">${verificationLink}</p>
+        
+        <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 30px;">
+          <p style="font-size: 15px; color: #64748b;">Best regards,<br><strong style="color: #1e3a8a;">The I Go Lanka Tours Team</strong></p>
+        </div>
+      `)
+    }),
+
+    /**
+     * Registration Successful / Welcome
+     */
+    welcome: (userName, loginLink) => ({
+      subject: "Welcome to I Go Lanka Tours! 🌴",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Welcome to Paradise! 🌴</h2>
+        <p style="font-size: 17px; line-height: 1.8; margin-bottom: 20px;">Hi ${userName},</p>
+        <p style="font-size: 17px; line-height: 1.8; margin-bottom: 25px;">Your account at <strong>I GO LANKA TOURS</strong> is now active. You're ready to discover the wonders of Sri Lanka!</p>
+        
+        <div style="background: #ecfdf5; border-left: 5px solid #10b981; padding: 25px; margin: 30px 0; border-radius: 12px;">
+           <p style="margin: 0; color: #064e3b; font-size: 16px; font-weight: 600;">Your Journey Starts Here:</p>
+           <ul style="margin: 15px 0 0 0; color: #065f46; line-height: 1.8;">
+             <li>Browse curated luxury and adventure packages</li>
+             <li>Get matched with professional local guides</li>
+             <li>Secure, seamless booking and payments</li>
+             <li>24/7 dedicated travel support</li>
+           </ul>
+        </div>
+        
+        ${button('Start Your Adventure', loginLink, '#059669')}
+        
+        <p style="font-size: 16px; line-height: 1.8;">If you need help planning your itinerary, feel free to contact us anytime!</p>
+      `)
+    }),
+
+    /**
+     * Password Reset
+     */
+    passwordReset: (fullName, resetLink) => ({
+      subject: "Reset Your Password - I GO LANKA TOURS 🔐",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Reset Your Password</h2>
+        <p style="font-size: 17px; line-height: 1.8; margin-bottom: 20px;">Hello ${fullName},</p>
+        <p style="font-size: 17px; line-height: 1.8; margin-bottom: 25px;">We received a request to reset the password for your <strong>I GO LANKA TOURS</strong> account. No problem, it happens!</p>
+        
+        ${button('Reset Password', resetLink, '#dc2626')}
+        
+        <div style="background: #fffbeb; border-left: 5px solid #f59e0b; padding: 25px; margin: 30px 0; border-radius: 12px;">
+          <strong style="color: #92400e;">Security Notice:</strong> For your protection, this link will expire in 1 hour. If you didn't request this, you can safely ignore this email.
+        </div>
+        
+        <p style="color: #64748b; font-size: 14px; margin-top: 30px;">Copy/paste link if button doesn't work:</p>
+        <p style="word-break: break-all; color: #dc2626; font-size: 12px; font-family: monospace; background: #fef2f2; padding: 10px; border-radius: 6px;">${resetLink}</p>
+      `)
+    }),
+
+    /**
      * Booking Confirmed
      */
     bookingConfirmed: (userName, packageName, bookingDetails) => ({
-        subject: `🎉 Booking Confirmed - ${packageName}`,
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Booking Confirmed!</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Great news! Your booking for <strong>${packageName}</strong> has been confirmed.
-      </p>
-      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="color: #111827; margin: 0 0 15px 0; font-size: 18px;">Booking Details</h3>
-        <p style="color: #6b7280; margin: 5px 0;"><strong>Travel Date:</strong> ${new Date(bookingDetails.travel_date).toLocaleDateString()}</p>
-        <p style="color: #6b7280; margin: 5px 0;"><strong>Travelers:</strong> ${bookingDetails.travelers}</p>
-        <p style="color: #6b7280; margin: 5px 0;"><strong>Total Price:</strong> $${bookingDetails.total_price}</p>
-        <p style="color: #6b7280; margin: 5px 0;"><strong>Booking ID:</strong> ${bookingDetails.booking_id}</p>
-      </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        We'll notify you once a guide is assigned to your tour. Get ready for an amazing adventure!
-      </p>
-      ${button('View Booking', `${process.env.FRONTEND_URL}/dashboard/bookings/${bookingDetails.booking_id}`)}
-    `)
+      subject: `🎉 Booking Confirmed - ${packageName}`,
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Booking Confirmed! 🎉</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hi ${userName},</p>
+        <p style="font-size: 17px; line-height: 1.8;">Your adventure is booked! We've confirmed your reservation for <strong>${packageName}</strong>.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 30px; border-radius: 15px; margin: 30px 0;">
+          <h3 style="color: ${BRAND_COLOR}; margin: 0 0 20px 0; font-size: 20px; border-bottom: 2px solid ${ACCENT_COLOR}; display: inline-block; padding-bottom: 5px;">Booking Details</h3>
+          <div style="display: grid; gap: 12px;">
+            <p style="margin: 5px 0;"><strong>Package:</strong> ${packageName}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date(bookingDetails.travel_date).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Travelers:</strong> ${bookingDetails.travelers}</p>
+            <p style="margin: 5px 0;"><strong>Booking ID:</strong> <span style="color: ${SECONDARY_COLOR}; font-weight: 600;">#${bookingDetails.booking_id}</span></p>
+          </div>
+        </div>
+        
+        ${button('View Booking Details', `${process.env.FRONTEND_URL}/dashboard/bookings/${bookingDetails.booking_id}`)}
+        
+        <p style="font-size: 16px; color: #475569;">Our team is now finalizing the details. We'll notify you as soon as your professional guide is assigned.</p>
+      `)
     }),
 
     /**
@@ -97,147 +194,17 @@ export const emailTemplates = {
     bookingCancelled: (userName, packageName, refundDetails) => ({
         subject: `Booking Cancellation Confirmed - ${packageName}`,
         html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Booking Cancelled</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Your booking for <strong>${packageName}</strong> has been cancelled as requested.
-      </p>
-      <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${ACCENT_COLOR};">
-        <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">Refund Information</h3>
-        <p style="color: #78350f; margin: 5px 0;"><strong>Refund Amount:</strong> $${refundDetails.amount.toFixed(2)}</p>
-        <p style="color: #78350f; margin: 5px 0;"><strong>Refund Percentage:</strong> ${refundDetails.percentage}%</p>
-        <p style="color: #78350f; margin: 5px 0;"><strong>Days Until Travel:</strong> ${refundDetails.daysUntilTravel} days</p>
-        <p style="color: #78350f; margin: 5px 0;"><strong>Status:</strong> ${refundDetails.status}</p>
+      <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Booking Cancelled</h2>
+      <p style="font-size: 17px; line-height: 1.8;">Hi ${userName},</p>
+      <p style="font-size: 17px; line-height: 1.8;">As requested, your booking for <strong>${packageName}</strong> has been successfully cancelled.</p>
+      
+      <div style="background: #fff7ed; border-left: 5px solid ${ACCENT_COLOR}; padding: 25px; margin: 30px 0; border-radius: 12px;">
+        <h3 style="color: #9a3412; margin: 0 0 15px 0; font-size: 18px;">Refund Summary</h3>
+        <p style="margin: 8px 0;"><strong>Refund Amount:</strong> $${refundDetails.amount.toFixed(2)}</p>
+        <p style="margin: 8px 0;"><strong>Refund Policy:</strong> ${refundDetails.percentage}% applicable</p>
+        <p style="margin: 8px 0;"><strong>Status:</strong> ${refundDetails.status || 'Processing'}</p>
       </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Your refund will be processed within 5-7 business days. We hope to see you again soon!
-      </p>
-      ${button('View My Bookings', `${process.env.FRONTEND_URL}/dashboard/bookings`)}
-    `)
-    }),
-
-    /**
-     * Guide Approved
-     */
-    guideApproved: (guideName) => ({
-        subject: '🎉 Guide Application Approved!',
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Congratulations! 🎉</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${guideName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Excellent news! Your guide application has been <strong style="color: #059669;">approved</strong>.
-      </p>
-      <div style="background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #059669;">
-        <p style="color: #065f46; margin: 0; font-size: 16px;">
-          ✅ You can now start accepting tour assignments<br>
-          ✅ Your profile is visible to tourists<br>
-          ✅ Access your guide dashboard to manage bookings
-        </p>
-      </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Welcome to the iGo Lanka Tours family! We're excited to have you on board.
-      </p>
-      ${button('Go to Dashboard', `${process.env.FRONTEND_URL}/guide/dashboard`)}
-    `)
-    }),
-
-    /**
-     * Guide Rejected
-     */
-    guideRejected: (guideName, reason) => ({
-        subject: 'Guide Application - Revision Required',
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Application Requires Revision</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${guideName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Thank you for your interest in becoming a guide with iGo Lanka Tours. After reviewing your application, we need some additional information or revisions.
-      </p>
-      <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
-        <h3 style="color: #991b1b; margin: 0 0 10px 0; font-size: 16px;">Reason for Revision:</h3>
-        <p style="color: #7f1d1d; margin: 0;">${reason}</p>
-      </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Please update your application and resubmit. We're here to help if you have any questions!
-      </p>
-      ${button('Update Application', `${process.env.FRONTEND_URL}/guide/application`)}
-    `)
-    }),
-
-    /**
-     * Review Submitted
-     */
-    reviewSubmitted: (userName, packageName) => ({
-        subject: 'Review Submitted Successfully',
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Thank You for Your Review!</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Thank you for sharing your experience with <strong>${packageName}</strong>!
-      </p>
-      <div style="background: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${BRAND_COLOR};">
-        <p style="color: #1e40af; margin: 0; font-size: 16px;">
-          📝 Your review has been submitted and is pending approval<br>
-          ⏱️ Reviews are typically approved within 24 hours<br>
-          📧 We'll notify you once your review is published
-        </p>
-      </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Your feedback helps other travelers make informed decisions. We appreciate you!
-      </p>
-    `)
-    }),
-
-    /**
-     * Review Approved
-     */
-    reviewApproved: (userName, packageName) => ({
-        subject: '✅ Your Review Has Been Approved!',
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Review Approved!</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Great news! Your review for <strong>${packageName}</strong> has been approved and is now live on our website.
-      </p>
-      <div style="background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #059669;">
-        <p style="color: #065f46; margin: 0; font-size: 16px;">
-          ✅ Your review is now visible to all users<br>
-          🌟 Thank you for helping our community!
-        </p>
-      </div>
-      ${button('View Your Review', `${process.env.FRONTEND_URL}/packages`)}
-    `)
-    }),
-
-    /**
-     * Review Rejected
-     */
-    reviewRejected: (userName, packageName, reason) => ({
-        subject: 'Review Requires Revision',
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Review Requires Revision</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Thank you for submitting your review for <strong>${packageName}</strong>. We need some revisions before we can publish it.
-      </p>
-      <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${ACCENT_COLOR};">
-        <h3 style="color: #92400e; margin: 0 0 10px 0; font-size: 16px;">Reason:</h3>
-        <p style="color: #78350f; margin: 0;">${reason}</p>
-      </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Please update your review and resubmit. We appreciate your feedback!
-      </p>
+      <p style="font-size: 16px; line-height: 1.8;">Refunds typically appear in your account within 5-7 business days. We hope to welcome you back to Sri Lanka in the future!</p>
     `)
     }),
 
@@ -247,73 +214,226 @@ export const emailTemplates = {
     guideAssigned: (userName, guideName, packageName, tourDate) => ({
         subject: '📅 Guide Assigned to Your Tour',
         html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Your Guide Has Been Assigned!</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Exciting news! <strong>${guideName}</strong> has been assigned as your guide for <strong>${packageName}</strong>.
-      </p>
-      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="color: #111827; margin: 0 0 15px 0; font-size: 18px;">Tour Details</h3>
-        <p style="color: #6b7280; margin: 5px 0;"><strong>Guide:</strong> ${guideName}</p>
-        <p style="color: #6b7280; margin: 5px 0;"><strong>Package:</strong> ${packageName}</p>
-        <p style="color: #6b7280; margin: 5px 0;"><strong>Date:</strong> ${new Date(tourDate).toLocaleDateString()}</p>
+      <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Your Guide is Ready! 📅</h2>
+      <p style="font-size: 17px; line-height: 1.8;">Hi ${userName},</p>
+      <p style="font-size: 17px; line-height: 1.8;">We've assigned a top-tier professional guide for your upcoming tour of <strong>${packageName}</strong>.</p>
+      
+      <div style="background: #f1f5f9; padding: 30px; border-radius: 15px; margin: 30px 0; text-align: center;">
+        <div style="margin-bottom: 20px;">
+           <span style="font-size: 50px;">👤</span>
+        </div>
+        <h3 style="color: ${BRAND_COLOR}; margin: 0; font-size: 22px;">${guideName}</h3>
+        <p style="color: #64748b; margin: 10px 0 0 0; font-size: 16px;">Professional Local Guide</p>
       </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Your guide will contact you soon with more details. Get ready for an amazing adventure!
-      </p>
-      ${button('View Booking', `${process.env.FRONTEND_URL}/dashboard/bookings`)}
+      
+      <p style="font-size: 16px; line-height: 1.8;">${guideName} will contact you shortly to coordinate your meeting and discuss last-minute details. Get ready for an authentic Sri Lankan experience!</p>
+      ${button('View Tour Assignment', `${process.env.FRONTEND_URL}/dashboard/bookings`)}
     `)
     }),
 
     /**
-     * Payment Received
+     * Guide Registration Received
      */
-    paymentReceived: (userName, amount, bookingId) => ({
-        subject: '✅ Payment Received',
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Payment Confirmed!</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        We've successfully received your payment of <strong>$${amount.toFixed(2)}</strong>.
-      </p>
-      <div style="background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #059669;">
-        <p style="color: #065f46; margin: 0; font-size: 16px;">
-          ✅ Payment processed successfully<br>
-          📧 Receipt sent to your email<br>
-          🎫 Your booking is confirmed
-        </p>
-      </div>
-      ${button('View Booking', `${process.env.FRONTEND_URL}/dashboard/bookings/${bookingId}`)}
-    `)
+    guideRegistration: (fullName) => ({
+      subject: "Guide Registration Received - I GO LANKA TOURS 📋",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Registration Received! 🧭</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hello ${fullName}! 👋</p>
+        <p style="font-size: 17px; line-height: 1.8;">Thank you for applying to be a professional guide with <strong>I GO LANKA TOURS</strong>. We've received your registration and are excited to review your profile.</p>
+        
+        <div style="background: #f1f5f9; border-left: 5px solid ${BRAND_COLOR}; padding: 25px; margin: 30px 0; border-radius: 12px;">
+          <h3 style="color: ${BRAND_COLOR}; margin: 0 0 15px 0; font-size: 18px;">What Happens Next?</h3>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+            <li>Our team will verify your credentials and documents.</li>
+            <li>You'll receive a notification once your profile is approved.</li>
+            <li>Once active, you can start receiving tour assignments!</li>
+          </ul>
+        </div>
+        
+        <p style="font-size: 16px; line-height: 1.8;">Please ensure your profile is fully completed with your certificates and language skills to speed up the process.</p>
+        ${button('Complete Your Profile', `${process.env.FRONTEND_URL}/guide/profile`)}
+      `)
     }),
 
     /**
-     * Refund Processed
+     * Guide Assignment (Notification to Guide)
      */
-    refundProcessed: (userName, amount, bookingId) => ({
-        subject: '💰 Refund Processed',
-        html: emailWrapper(`
-      <h2 style="color: #111827; margin: 0 0 20px 0;">Refund Processed</h2>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Your refund of <strong>$${amount.toFixed(2)}</strong> has been processed successfully.
-      </p>
-      <div style="background: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${BRAND_COLOR};">
-        <p style="color: #1e40af; margin: 0; font-size: 16px;">
-          💰 Refund Amount: $${amount.toFixed(2)}<br>
-          ⏱️ Processing Time: 5-7 business days<br>
-          📧 Confirmation sent to your email
-        </p>
-      </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        The refund will appear in your original payment method within 5-7 business days.
-      </p>
-    `)
+    guideAssignment: (guideName, touristName, packageName, startDate, endDate, adminNotes) => ({
+      subject: `🎯 New Tour Assignment: ${packageName}`,
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">New Tour Assignment! 🎯</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hello <strong>${guideName}</strong>,</p>
+        <p style="font-size: 17px; line-height: 1.8;">You have been assigned as the lead guide for an upcoming tour. Please review the assignment details below.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 30px; border-radius: 15px; margin: 30px 0;">
+          <h3 style="color: ${BRAND_COLOR}; margin: 0 0 20px 0; font-size: 20px;">Tour Summary</h3>
+          <p style="margin: 8px 0;"><strong>Package:</strong> ${packageName}</p>
+          <p style="margin: 8px 0;"><strong>Tourist:</strong> ${touristName}</p>
+          <p style="margin: 8px 0;"><strong>Schedule:</strong> ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}</p>
+        </div>
+        
+        ${adminNotes ? `
+        <div style="background: #fffbeb; border-left: 5px solid ${ACCENT_COLOR}; padding: 25px; margin: 30px 0; border-radius: 12px;">
+          <h3 style="color: #92400e; margin: 0 0 10px 0; font-size: 17px;">Admin Instructions</h3>
+          <p style="margin: 0; font-style: italic;">${adminNotes}</p>
+        </div>
+        ` : ''}
+        
+        ${button('Confirm Assignment', `${process.env.FRONTEND_URL}/guide/dashboard`)}
+      `)
+    }),
+
+    /**
+     * Contact Form - User Copy
+     */
+    contactFormUser: (name, subject) => ({
+      subject: `We've Received Your Inquiry - ${subject}`,
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Hello ${name}! 👋</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Thank you for reaching out to <strong>I GO LANKA TOURS</strong>. We've received your inquiry regarding <strong>"${subject}"</strong>.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 25px; margin: 30px 0; border-radius: 12px; text-align: center;">
+          <p style="margin: 0; color: ${BRAND_COLOR}; font-weight: 600; font-size: 18px;">One of our travel experts will get back to you within 24 hours.</p>
+        </div>
+        
+        <p style="font-size: 16px; line-height: 1.8;">In the meantime, feel free to explore our latest tour packages on our website!</p>
+        ${button('Browse Packages', `${process.env.FRONTEND_URL}/packages`, SECONDARY_COLOR)}
+      `)
+    }),
+
+    /**
+     * Contact Form - Admin Alert
+     */
+    contactFormAdmin: (data) => ({
+      subject: `🚨 New Contact Inquiry: ${data.subject}`,
+      html: emailWrapper(`
+        <h2 style="color: #1e3a8a; margin: 0 0 20px 0; font-size: 24px;">New Customer Inquiry</h2>
+        <div style="background: #f1f5f9; padding: 25px; border-radius: 12px;">
+          <p style="margin: 10px 0;"><strong>From:</strong> ${data.name}</p>
+          <p style="margin: 10px 0;"><strong>Email:</strong> ${data.email}</p>
+          <p style="margin: 10px 0;"><strong>Subject:</strong> ${data.subject}</p>
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <p><strong>Message:</strong></p>
+            <p style="font-style: italic; color: #475569;">${data.message}</p>
+          </div>
+        </div>
+        ${button('Reply to Customer', `mailto:${data.email}`)}
+      `)
+    }),
+
+    /**
+     * Review Submitted Confirmation
+     */
+    reviewSubmitted: (userName) => ({
+      subject: "Thank You for Your Review! ⭐",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Review Received! ✨</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hi ${userName},</p>
+        <p style="font-size: 17px; line-height: 1.8;">Thank you for sharing your experience with <strong>I GO LANKA TOURS</strong>. Your feedback helps other travelers and helps us maintain our quality standards.</p>
+        
+        <div style="background: #f0f9ff; border-left: 5px solid #3b82f6; padding: 25px; margin: 30px 0; border-radius: 12px;">
+          <p style="margin: 0; color: #1e40af; font-weight: 600;">What's next?</p>
+          <p style="margin: 10px 0 0 0;">Our team will review your submission for quality. Once approved, it will be published live on our platform!</p>
+        </div>
+        
+        <p style="font-size: 16px;">We appreciate you being part of our community.</p>
+      `)
+    }),
+
+    /**
+     * Review Approved Notification
+     */
+    reviewApproved: (userName) => ({
+      subject: "Your Review is Now Live! 🎉",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Approved & Live! ✅</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Great news ${userName},</p>
+        <p style="font-size: 17px; line-height: 1.8;">Your review has been approved and is now visible on the <strong>I GO LANKA TOURS</strong> website. Thank you for helping the travel community!</p>
+        
+        ${button('View Your Review', `${process.env.FRONTEND_URL}/packages`, '#10b981')}
+      `)
+    }),
+
+    /**
+     * Review Rejected Notification
+     */
+    reviewRejected: (userName, reason) => ({
+      subject: "Update Regarding Your Review",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Review Update</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hello ${userName},</p>
+        <p style="font-size: 17px; line-height: 1.8;">Your recent review was not approved for publication at this time.</p>
+        
+        <div style="background: #fef2f2; border-left: 5px solid #ef4444; padding: 25px; margin: 30px 0; border-radius: 12px;">
+          <p style="margin: 0; color: #991b1b; font-weight: 600;">Feedback from our team:</p>
+          <p style="margin: 10px 0 0 0; font-style: italic;">${reason || 'Does not meet our community guidelines.'}</p>
+        </div>
+        
+        <p style="font-size: 16px;">You are welcome to submit a revised review that follows our guidelines.</p>
+      `)
+    }),
+
+    /**
+     * Guide Approved Notification
+     */
+    guideApproved: (userName) => ({
+      subject: "🎉 Congratulations! Your Guide Account is Approved!",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">You're Approved! 🎉</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Congratulations ${userName},</p>
+        <p style="font-size: 17px; line-height: 1.8;">Your professional guide application for <strong>I GO LANKA TOURS</strong> has been officially approved. You can now start accepting tour assignments!</p>
+        
+        <div style="background: #ecfdf5; border-left: 5px solid #10b981; padding: 25px; margin: 30px 0; border-radius: 12px;">
+           <p style="margin: 0; color: #064e3b; font-weight: 600;">Next Steps:</p>
+           <ul style="margin: 10px 0 0 0; color: #065f46;">
+             <li>Complete your profile with Specialties</li>
+             <li>Set your languages and bio</li>
+             <li>Upload a professional profile photo</li>
+           </ul>
+        </div>
+        
+        ${button('Go to Dashboard', `${process.env.FRONTEND_URL}/guide/dashboard`, '#059669')}
+      `)
+    }),
+
+    /**
+     * Guide Rejected Notification
+     */
+    guideRejected: (userName, reason) => ({
+      subject: "Guide Application Update - Action Required",
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Application Update</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hello ${userName},</p>
+        <p style="font-size: 17px; line-height: 1.8;">We've reviewed your guide application. At this stage, your application requires some revisions before it can be approved.</p>
+        
+        <div style="background: #fffbeb; border-left: 5px solid #f59e0b; padding: 25px; margin: 30px 0; border-radius: 12px;">
+          <p style="margin: 0; color: #92400e; font-weight: 600;">Reason for Revision:</p>
+          <p style="margin: 10px 0 0 0;">${reason || 'Missing or unclear documentation.'}</p>
+        </div>
+        
+        <p style="font-size: 16px;">Please log in to your portal to upload the required documents or make the necessary changes.</p>
+        ${button('Update Application', `${process.env.FRONTEND_URL}/guide/profile`, '#d97706')}
+      `)
+    }),
+
+    /**
+     * Guide Document Upload Confirmation
+     */
+    guideDocumentUpload: (fullName, documentType) => ({
+      subject: `Document Received: ${documentType.charAt(0).toUpperCase() + documentType.slice(1)} - I GO LANKA TOURS`,
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Document Received! 📄</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hello ${fullName},</p>
+        <p style="font-size: 17px; line-height: 1.8;">We've successfully received your <strong>${documentType}</strong>. Our administration team has been notified and will review it shortly.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 25px; margin: 30px 0; border-radius: 12px; text-align: center;">
+          <p style="margin: 0; color: ${BRAND_COLOR}; font-weight: 600; font-size: 16px;">This document will be verified within 24-48 business hours.</p>
+        </div>
+        
+        <p style="font-size: 16px; line-height: 1.8;">You'll receive another notification once it has been verified. Thank you for your patience!</p>
+        ${button('Check Profile Status', `${process.env.FRONTEND_URL}/guide/profile`, SECONDARY_COLOR)}
+      `)
     })
 };
+
+export default emailTemplates;

@@ -53,7 +53,15 @@ app.use(helmet({
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "https://apis.google.com"],
       "img-src": ["'self'", "data:", "https://*.supabase.co", "https://*.stripe.com", "https://*.google.com"],
-      "connect-src": ["'self'", "https://*.supabase.co", "https://*.stripe.com", "http://localhost:8000", "http://localhost:5000"],
+      "connect-src": [
+        "'self'", 
+        "https://*.supabase.co", 
+        "https://*.stripe.com", 
+        "http://localhost:8000", 
+        "http://localhost:5000",
+        "https://api.igolankatours.com",
+        "https://www.igolankatours.com"
+      ],
       "frame-ancestors": ["'none'"], // Prevent clickjacking
     },
   },
@@ -81,9 +89,11 @@ app.use(xss());
 // 2. Restrict CORS to the known frontend origin
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
-  "http://localhost:5174", // alternate Vite port
-  "http://localhost:5175", // alternate Vite port
-  "http://localhost:3000", // dev fallback
+  "https://www.igolankatours.com",
+  "https://igolankatours.com",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:3000",
 ];
 app.use(cors({
   origin: (origin, callback) => {

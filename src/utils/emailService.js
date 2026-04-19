@@ -17,12 +17,12 @@ import { emailWrapper } from './emailTemplates.js';
 // Create reusable transporter
 const createTransporter = () => {
     return nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: false, // true for 465, false for other ports
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.EMAIL_PORT) || 587,
+        secure: process.env.EMAIL_PORT === '465', // true for 465, false for other ports
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
         },
     });
 };
@@ -74,7 +74,7 @@ export const sendEmail = async (to, subject, htmlContent, textContent = '') => {
         const transporter = createTransporter();
 
         const mailOptions = {
-            from: `"I Go Lanka Tours" <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
+            from: `"I Go Lanka Tours" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
             to,
             subject,
             html: emailWrapper(htmlContent),

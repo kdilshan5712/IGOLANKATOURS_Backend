@@ -98,7 +98,7 @@ export const registerTourist = async (req, res) => {
         errors.full_name = "Full name must not exceed 100 characters";
       } else if (/\d/.test(trimmedName)) {
         errors.full_name = "Full name cannot contain numbers";
-      } else if (!/^[a-zA-Z\s\-.']+$/.test(trimmedName)) {
+      } else if (!/^[\p{L}\s\-\.']+$/u.test(trimmedName)) {
         errors.full_name = "Full name can only contain letters, spaces, dots, hyphens, and apostrophes";
       } else if (trimmedName.includes("  ")) {
         errors.full_name = "Full name cannot contain consecutive spaces";
@@ -204,17 +204,12 @@ export const registerTourist = async (req, res) => {
 
     // Send verification email using new service
     try {
-      const { sendEmail } = await import("../utils/emailService.js");
-      // Create a simple HTML template for verification since we didn't create a specific one in emailService.js yet
-      // Or better, update emailService to support generic emails or add verification template
-      // For now, let's use the existing template mechanism if compatible, or direct send
-
+      const emailService = await import("../utils/emailService.js");
       const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
-      await sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
+      await emailService.sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
 
       // Also send welcome email for new registration
-      const { sendWelcomeEmail } = await import("../utils/emailService.js");
-      await sendWelcomeEmail(normalizedEmail, full_name.trim());
+      await emailService.sendWelcomeEmail(normalizedEmail, full_name.trim());
 
     } catch (emailErr) {
       console.error("❌ Error sending email:", emailErr.message);
@@ -616,8 +611,13 @@ export const resendVerification = async (req, res) => {
       verificationLink
     );
 
-    sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html)
-      .catch(err => console.error("Email send failed:", err));
+    // Send email using emailService to ensure it's logged and uses unified config
+    try {
+      const emailService = await import("../utils/emailService.js");
+      await emailService.sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
+    } catch (emailErr) {
+      console.error("Email send failed:", emailErr);
+    }
 
     res.json({
       message: "Verification email sent. Please check your inbox.",

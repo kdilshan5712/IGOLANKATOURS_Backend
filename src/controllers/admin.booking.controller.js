@@ -114,6 +114,58 @@ export const updateBookingStatus = async (req, res) => {
       });
     }
 
+    // --- F013: Send Automated Notification for Status Update ---
+    try {
+      const updatedBooking = result.rows[0];
+      
+      // Fetch user and package details for the email
+      const detailsRes = await db.query(
+        `SELECT u.email, t.full_name, p.name as package_name
+         FROM users u
+         JOIN tourist t ON u.user_id = t.user_id
+         JOIN tour_packages p ON p.package_id = $1
+         WHERE u.user_id = $2`,
+        [updatedBooking.package_id, updatedBooking.user_id]
+      );
+
+      if (detailsRes.rows.length > 0) {
+        const { email, full_name, package_name } = detailsRes.rows[0];
+        const { sendBookingConfirmation, sendCancellationEmail } = await import('../utils/emailService.js');
+
+        if (status === 'confirmed') {
+          await sendBookingConfirmation({
+            userEmail: email,
+            userName: full_name,
+            bookingReference: bookingId.substring(0, 8).toUpperCase(),
+            packageName: package_name,
+            travelDate: updatedBooking.travel_date,
+            totalPrice: updatedBooking.total_price,
+            numberOfTravelers: updatedBooking.travelers
+          });
+        } else if (status === 'cancelled') {
+           await sendCancellationEmail({
+            userEmail: email,
+            userName: full_name,
+            bookingReference: bookingId.substring(0, 8).toUpperCase(),
+            packageName: package_name,
+            refundAmount: updatedBooking.refund_amount || 0
+          });
+        }
+
+        // Also add in-app notification
+        await NotificationService.create({
+          userId: updatedBooking.user_id,
+          type: 'booking',
+          title: `Booking ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+          message: `Your booking for ${package_name} is now ${status}.`,
+          link: `/dashboard/bookings/${bookingId}`,
+          sendEmailNotif: false
+        });
+      }
+    } catch (notifErr) {
+       console.error("[F013] Admin status update notify error:", notifErr);
+    }
+
     res.json({
       success: true,
       message: `Booking status updated to ${status}`,

@@ -130,6 +130,53 @@ export const confirmPayment = async (req, res) => {
                 ['confirmed', 'paid', bookingId]
             );
 
+            // --- F013: Send Automated Email Confirmation/Receipt ---
+            try {
+                const { NotificationService } = await import('../utils/notificationService.js');
+                const { sendBookingConfirmation } = await import('../utils/emailService.js');
+
+                // 1. Fetch full details for the email
+                const fullBookingRes = await pool.query(
+                    `SELECT b.*, t.full_name as user_name, u.email as user_email, p.name as package_name
+                     FROM bookings b
+                     JOIN users u ON b.user_id = u.user_id
+                     JOIN tourist t ON u.user_id = t.user_id
+                     JOIN tour_packages p ON b.package_id = p.package_id
+                     WHERE b.booking_id = $1`,
+                    [bookingId]
+                );
+
+                if (fullBookingRes.rows.length > 0) {
+                    const data = fullBookingRes.rows[0];
+                    
+                    // Create in-app notification
+                    await NotificationService.create({
+                        userId: data.user_id,
+                        type: 'booking',
+                        title: 'Payment Received! 🎉',
+                        message: `We've received your payment for ${data.package_name}. Your booking is now confirmed.`,
+                        link: `/dashboard/bookings/${bookingId}`,
+                        sendEmailNotif: false // We'll send the branded email manually below
+                    });
+
+                    // Send Branded Confirmation Email
+                    await sendBookingConfirmation({
+                        userEmail: data.user_email,
+                        userName: data.user_name,
+                        bookingReference: data.booking_id.substring(0, 8).toUpperCase(),
+                        packageName: data.package_name,
+                        travelDate: data.travel_date,
+                        totalPrice: data.total_price,
+                        numberOfTravelers: data.travelers
+                    });
+                    
+                    console.log(`[F013] Automated confirmation sent for booking ${bookingId}`);
+                }
+            } catch (notifyError) {
+                console.error('[F013] Failed to send automated notification:', notifyError);
+                // Don't fail the payment response if email fails
+            }
+
             res.json({
                 success: true,
                 message: 'Payment confirmed successfully',
@@ -295,6 +342,38 @@ export const processDummyPayment = async (req, res) => {
              WHERE booking_id = $1`,
             [bookingId]
         );
+
+        // --- F013: Send Automated Email Confirmation/Receipt (Mock) ---
+        try {
+            const { NotificationService } = await import('../utils/notificationService.js');
+            const { sendBookingConfirmation } = await import('../utils/emailService.js');
+
+            const fullBookingRes = await pool.query(
+                `SELECT b.*, t.full_name as user_name, u.email as user_email, p.name as package_name
+                 FROM bookings b
+                 JOIN users u ON b.user_id = u.user_id
+                 JOIN tourist t ON u.user_id = t.user_id
+                 JOIN tour_packages p ON b.package_id = p.package_id
+                 WHERE b.booking_id = $1`,
+                [bookingId]
+            );
+
+            if (fullBookingRes.rows.length > 0) {
+                const data = fullBookingRes.rows[0];
+                await sendBookingConfirmation({
+                    userEmail: data.user_email,
+                    userName: data.user_name,
+                    bookingReference: data.booking_id.substring(0, 8).toUpperCase(),
+                    packageName: data.package_name,
+                    travelDate: data.travel_date,
+                    totalPrice: data.total_price,
+                    numberOfTravelers: data.travelers
+                });
+                console.log(`[F013] MOCK confirmation sent for booking ${bookingId}`);
+            }
+        } catch (err) {
+            console.error('[F013] Mock notify error:', err);
+        }
 
         res.json({
             success: true,

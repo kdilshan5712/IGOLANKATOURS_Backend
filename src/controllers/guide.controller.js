@@ -2,7 +2,8 @@ import supabase from "../config/supabase.js";
 import db from "../config/db.js";
 import { hashPassword } from "../utils/hash.js";
 import { signToken } from "../utils/jwt.js";
-import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
+import emailService from "../utils/emailService.js";
+import { emailTemplates } from "../utils/emailTemplates.js";
 import { generateEmailVerifyToken } from "../utils/tokens.js";
 
 /* ======================================================
@@ -70,14 +71,18 @@ export const registerGuide = async (req, res) => {
     );
 
     // Generate verification link
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const verificationLink = `${frontendUrl}/verify-email?token=${verifyToken}`;
     console.log(`[TESTING] Verification Link: ${verificationLink}`);
 
-    // Send verification email
-    const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
-    sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html)
-      .catch(err => console.error("Email send failed:", err));
+    // Send verification email using unified service
+    try {
+      const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
+      await emailService.sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
+      console.log(`✅ Verification email sent to ${normalizedEmail}`);
+    } catch (emailErr) {
+      console.error("❌ Email send failed during guide registration:", emailErr);
+    }
 
     res.status(201).json({
       success: true,
@@ -312,9 +317,18 @@ export const uploadGuideDocuments = async (req, res) => {
 
     if (guideEmailResult.rows.length > 0) {
       const { email, full_name } = guideEmailResult.rows[0];
-      const documentEmail = emailTemplates.guideDocumentUpload(full_name, normalizedType);
-      sendEmail(email, documentEmail.subject, documentEmail.html)
-        .catch(err => console.error("Email send failed:", err));
+      
+      // Attempt to send document upload confirmation
+      try {
+        // Fallback to guideRegistration if guideDocumentUpload is missing in template
+        const templateFunc = emailTemplates.guideDocumentUpload || emailTemplates.guideRegistration;
+        const documentEmail = templateFunc(full_name, normalizedType);
+        
+        await emailService.sendEmail(email, documentEmail.subject, documentEmail.html);
+        console.log(`✅ Document upload notification sent to ${email}`);
+      } catch (notifErr) {
+        console.error("❌ Document upload notification failed:", notifErr);
+      }
     }
 
     res.status(201).json({

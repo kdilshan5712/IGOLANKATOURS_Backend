@@ -1,1 +1,0 @@
-CHECK (((status)::text = ANY ((ARRAY['confirmed'::character varying, 'cancelled'::character varying])::text[])))

@@ -23,13 +23,12 @@ export const authSchemas = {
       .matches(/\d/).withMessage('Password must contain numbers')
       .matches(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/).withMessage('Password must contain special characters'),
     
-    body('name')
+    body('full_name')
       .trim()
       .notEmpty().withMessage('Full name is required')
       .isLength({ min: 2, max: 100 }).withMessage('Full name must be 2-100 characters')
-      .matches(/^[a-zA-Z\s\-']+$/).withMessage('Full name can only contain letters, spaces, hyphens, and apostrophes')
       .custom(value => {
-        if (/\d/.test(value)) throw new Error('Full name cannot contain numbers');
+        if (/[0-9]/.test(value)) throw new Error('Full name cannot contain numbers');
         if (value.includes('  ')) throw new Error('Full name cannot contain consecutive spaces');
         return true;
       }),
@@ -48,7 +47,10 @@ export const authSchemas = {
       .optional({ checkFalsy: true })
       .trim()
       .isLength({ min: 2, max: 100 }).withMessage('Country must be 2-100 characters')
-      .matches(/^[a-zA-Z\s\-']+$/).withMessage('Country can only contain letters, spaces, and hyphens')
+      .custom(value => {
+        if (/[0-9]/.test(value)) throw new Error('Country name cannot contain numbers');
+        return true;
+      })
   ],
 
   /**
