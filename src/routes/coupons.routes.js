@@ -1,3 +1,9 @@
+/**
+ * Promotional Coupon Routes
+ * Path: /api/coupons
+ * 
+ * Provides public endpoints for validating discount coupons during the booking flow.
+ */
 import express from "express";
 import { validateCoupon } from "../controllers/coupon.controller.js";
 

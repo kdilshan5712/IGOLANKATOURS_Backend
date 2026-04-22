@@ -2,9 +2,16 @@ import db from "../config/db.js";
 import { hashPassword } from "../utils/hash.js";
 
 /**
- * GET ADMIN PROFILE
- * GET /api/admin/me
- * Auth: Required (Admin only)
+ * Retrieves the currently authenticated admin's profile statistics.
+ * Includes a database timeout fallback to return session-based data if the DB is slow.
+ * 
+ * @async
+ * @function getAdminProfile
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated user object from middleware.
+ * @param {string} req.user.user_id - ID of the authenticated admin.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with admin profile details.
  */
 export const getAdminProfile = async (req, res) => {
   const user_id = req.user.user_id;
@@ -89,10 +96,18 @@ export const getAdminProfile = async (req, res) => {
 };
 
 /**
- * CREATE NEW ADMIN
- * POST /api/admin/create-admin
- * Auth: Required (Admin only)
- * Only admins can create other admin accounts
+ * Allows an existing admin to create a new administrative account.
+ * Validates email format, password strength, and ensures email uniqueness.
+ * 
+ * @async
+ * @function createAdmin
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - New admin details.
+ * @param {string} req.body.email - Email for the new admin account.
+ * @param {string} req.body.password - Password for the new account (min 8 chars).
+ * @param {string} [req.body.full_name] - Optional full name for the admin.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the created admin info.
  */
 export const createAdmin = async (req, res) => {
   try {
@@ -176,9 +191,13 @@ export const createAdmin = async (req, res) => {
 };
 
 /**
- * GET ALL ADMINS
- * GET /api/admin/admins
- * Auth: Required (Admin only)
+ * Lists all registered administrative accounts in the system.
+ * 
+ * @async
+ * @function getAllAdmins
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of all admins.
  */
 export const getAllAdmins = async (req, res) => {
   try {

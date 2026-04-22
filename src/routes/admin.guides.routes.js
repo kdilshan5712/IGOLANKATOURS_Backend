@@ -1,3 +1,10 @@
+/**
+ * Admin Guide Management Routes
+ * Path: /api/admin/guides
+ * 
+ * Handles administrative control over tour guides, including 
+ * application review, document approval, account status management, and commission configuration.
+ */
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {

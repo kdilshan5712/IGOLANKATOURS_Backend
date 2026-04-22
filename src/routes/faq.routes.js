@@ -1,3 +1,9 @@
+/**
+ * Frequently Asked Questions (FAQ) Routes
+ * Path: /api/faqs
+ * 
+ * Provides public endpoints for retrieving frequently asked questions.
+ */
 import express from 'express';
 import { getAllFaqs } from '../controllers/faq.controller.js';
 

@@ -1,6 +1,19 @@
 import db from "../config/db.js";
 
-// Validate a coupon code
+/**
+ * Validates a coupon code against a booking amount.
+ * Checks for activity, expiry, usage limits, and minimum booking requirements.
+ * Calculates the applicable discount based on percentage or fixed value.
+ * 
+ * @async
+ * @function validateCoupon
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} req.query.code - The coupon code to validate.
+ * @param {number} [req.query.amount=0] - The booking amount to apply the coupon to.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the validation result and calculated discount.
+ */
 export const validateCoupon = async (req, res) => {
     try {
         const { code, amount } = req.query;

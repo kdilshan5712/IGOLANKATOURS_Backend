@@ -2,7 +2,12 @@ import multer from "multer";
 
 const storage = multer.memoryStorage();
 
-// Single file upload (for guide documents)
+/**
+ * Default Multer configuration for single file uploads (e.g., guide identity documents).
+ * Supports JPEG, PNG, and PDF formats with a 10MB limit.
+ * 
+ * @type {import('multer').Multer}
+ */
 const upload = multer({
   storage,
   limits: { 
@@ -36,7 +41,12 @@ const upload = multer({
   }
 });
 
-// Multiple image upload (for reviews)
+/**
+ * Multer configuration for multiple image uploads (e.g., user tour reviews).
+ * Supports JPEG, PNG, and WebP formats. Limited to 5 files per request, 5MB each.
+ * 
+ * @type {import('multer').Multer}
+ */
 export const uploadReviewImages = multer({
   storage,
   limits: { 
@@ -70,7 +80,12 @@ export const uploadReviewImages = multer({
   }
 });
 
-// Single image upload (for gallery)
+/**
+ * Multer configuration for single image uploads (e.g., gallery items or profile photos).
+ * Supports JPEG, PNG, and WebP formats with a 10MB limit.
+ * 
+ * @type {import('multer').Multer}
+ */
 export const uploadSingleImage = multer({
   storage,
   limits: { 

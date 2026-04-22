@@ -1,3 +1,10 @@
+/**
+ * Admin Review Moderation Routes
+ * Path: /api/admin/reviews
+ * 
+ * Provides administrative endpoints for moderating user reviews, 
+ * including approval, rejection with reasons, and permanent deletion.
+ */
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 import {

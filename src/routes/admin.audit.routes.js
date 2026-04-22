@@ -1,3 +1,10 @@
+/**
+ * Admin Audit Routes
+ * Path: /api/admin/audit-logs
+ * 
+ * Provides administrative endpoints for viewing and filtering system audit logs, 
+ * which track sensitive actions performed by admins across the system.
+ */
 import express from "express";
 import db from "../config/db.js";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";

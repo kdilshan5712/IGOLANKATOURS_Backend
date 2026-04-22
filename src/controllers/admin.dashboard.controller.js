@@ -3,8 +3,14 @@ import db from '../config/db.js';
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 
 /**
- * 📊 GET /api/admin/dashboard/stats
- * Comprehensive dashboard statistics, trends, and distributions.
+ * Retrieves comprehensive dashboard statistics, including user counts, booking status distribution,
+ * revenue trends (last 6 months), and top-performing packages.
+ * 
+ * @async
+ * @function getDashboardStats
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the aggregated statistics.
  */
 const getDashboardStats = async (req, res) => {
   try {
@@ -81,8 +87,14 @@ const getDashboardStats = async (req, res) => {
 };
 
 /**
- * 🔔 GET /api/admin/dashboard/notifications/counts
- * Get counts of items requiring urgent attention.
+ * Retrieves counts of items requiring urgent attention, such as unread messages,
+ * pending payout requests, guide applications, and reviews.
+ * 
+ * @async
+ * @function getNotificationCounts
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with notification counts.
  */
 const getNotificationCounts = async (req, res) => {
   try {
@@ -109,7 +121,15 @@ const getNotificationCounts = async (req, res) => {
 };
 
 /**
- * 📅 GET /api/admin/dashboard/recent-bookings
+ * Fetches a list of the most recent bookings with package and tourist details.
+ * 
+ * @async
+ * @function getRecentBookings
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {number} [req.query.limit=10] - Maximum number of bookings to return.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the recent bookings.
  */
 const getRecentBookings = async (req, res) => {
   try {
@@ -146,7 +166,15 @@ const getRecentBookings = async (req, res) => {
   }
 };
 
-// Helper to fetch revenue report data
+/**
+ * Internal helper to aggregate revenue data across different dimensions (summary, by package, by status, monthly trend).
+ * 
+ * @async
+ * @function fetchRevenueReportData
+ * @param {string} [dateFrom] - Start date for filtering.
+ * @param {string} [dateTo] - End date for filtering.
+ * @returns {Promise<Object>} An object containing summarized revenue statistics.
+ */
 const fetchRevenueReportData = async (dateFrom, dateTo) => {
   let dateFilter = '';
   const params = [];
@@ -238,7 +266,16 @@ const fetchRevenueReportData = async (dateFrom, dateTo) => {
 };
 
 /**
- * 💰 GET /api/admin/dashboard/revenue-report
+ * Fetches a summarized revenue report, optionally filtered by date range.
+ * 
+ * @async
+ * @function getRevenueReport
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.dateFrom] - Optional start date filter.
+ * @param {string} [req.query.dateTo] - Optional end date filter.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the revenue report.
  */
 const getRevenueReport = async (req, res) => {
   try {
@@ -252,7 +289,19 @@ const getRevenueReport = async (req, res) => {
 };
 
 /**
- * 📊 GET /api/admin/dashboard/generate-report
+ * Generates and streams a downloadable report (PDF or CSV) based on the specified type
+ * (booking, user, revenue, or audit).
+ * 
+ * @async
+ * @function generateReport
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} req.query.type - Report type ('booking', 'user', 'revenue', 'audit').
+ * @param {string} req.query.format - Output format ('pdf' or 'csv').
+ * @param {string} [req.query.dateFrom] - Optional start date filter.
+ * @param {string} [req.query.dateTo] - Optional end date filter.
+ * @param {Object} res - Express response object (used for streaming the file).
+ * @returns {Promise<void>} Streams the report file to the client.
  */
 const generateReport = async (req, res) => {
   try {

@@ -1,3 +1,10 @@
+/**
+ * Authentication & Identity Routes
+ * Path: /api/auth
+ * 
+ * Handles core identity operations including registration (tourist), 
+ * multi-role login, email verification, password reset, and session management.
+ */
 import express from "express";
 import { 
   registerTourist, 

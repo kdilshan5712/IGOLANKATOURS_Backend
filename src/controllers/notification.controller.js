@@ -1,8 +1,17 @@
 import { NotificationService } from '../utils/notificationService.js';
 
 /**
- * GET /api/notifications
- * Get all notifications for logged-in user
+ * Retrieves all notifications for the authenticated user with optional filtering.
+ * 
+ * @async
+ * @function getUserNotifications
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {number} [req.query.limit=20] - Max number of notifications to return.
+ * @param {string} [req.query.unreadOnly='false'] - Whether to filter for only unread notifications.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of notifications.
  */
 export const getUserNotifications = async (req, res) => {
   try {
@@ -33,8 +42,14 @@ export const getUserNotifications = async (req, res) => {
 };
 
 /**
- * GET /api/notifications/unread-count
- * Get unread notification count
+ * Retrieves the count of unread notifications for the authenticated user.
+ * 
+ * @async
+ * @function getUnreadCount
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the unread notification count.
  */
 export const getUnreadCount = async (req, res) => {
   try {
@@ -55,8 +70,16 @@ export const getUnreadCount = async (req, res) => {
 };
 
 /**
- * PATCH /api/notifications/:id/read
- * Mark notification as read
+ * Marks a specific notification as 'read'.
+ * 
+ * @async
+ * @function markNotificationAsRead
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the notification to mark.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming status update.
  */
 export const markNotificationAsRead = async (req, res) => {
   try {
@@ -87,8 +110,14 @@ export const markNotificationAsRead = async (req, res) => {
 };
 
 /**
- * PUT /api/notifications/mark-all-read
- * Mark all notifications as read
+ * Marks all notifications for the authenticated user as 'read'.
+ * 
+ * @async
+ * @function markAllAsRead
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming all marked.
  */
 export const markAllAsRead = async (req, res) => {
   try {
@@ -109,8 +138,16 @@ export const markAllAsRead = async (req, res) => {
 };
 
 /**
- * DELETE /api/notifications/:id
- * Delete a notification
+ * Deletes a specific notification record.
+ * 
+ * @async
+ * @function deleteNotification
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the notification to delete.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
  */
 export const deleteNotification = async (req, res) => {
   try {
@@ -133,8 +170,15 @@ export const deleteNotification = async (req, res) => {
 };
 
 /**
- * Helper function to create a notification
- * Can be called from other controllers
+ * Helper function to create a new notification as a side effect within other operations.
+ * 
+ * @async
+ * @function createNotification
+ * @param {string} userId - ID of the user to receive the notification.
+ * @param {string} type - Type category of notification.
+ * @param {string} message - Content of the notification.
+ * @param {string} [link=null] - Optional URL for the user to visit.
+ * @returns {Promise<void>}
  */
 export const createNotification = async (userId, type, message, link = null) => {
   try {

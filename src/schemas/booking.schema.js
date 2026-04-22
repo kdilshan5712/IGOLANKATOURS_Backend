@@ -1,12 +1,17 @@
-import { body } from 'express-validator';
-
 /**
- * Booking Validation Schemas
+ * Tour Booking Validation Schemas
+ * 
+ * Defines express-validator rules for the tour booking lifecycle, 
+ * enforcing future-dated travel requirements, room type integrity, 
+ * and detailed traveller profile validation.
+ * 
+ * @namespace bookingSchemas
  */
 export const bookingSchemas = {
   /**
    * Validation for Creating and Updating Bookings
    */
+  // @VALIDATION_RULE: Tour Booking Creation
   create: [
     body('package_id')
       .notEmpty().withMessage('Package ID is required')

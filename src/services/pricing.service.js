@@ -1,16 +1,21 @@
-
 import db from "../config/db.js";
 
+/**
+ * Pricing Service
+ * Handles business logic for dynamic pricing calculations based on seasonal rules and geographic factors.
+ */
 const pricingService = {
     /**
-     * Calculate dynamic price for a package based on travel date and coast type.
-     * Uses the seasonal_pricing_rules table to apply percentage multipliers.
+     * Calculates the dynamic price for a tour package based on the travel date, group composition, and coast type.
+     * Consults the 'seasonal_pricing_rules' database table to apply multipliers for high/low seasons.
      * 
-     * @param {Object} pkg - Package object (must contain base_price, coast_type)
-     * @param {string|Date} travelDate - Date of travel
-     * @param {number} adults - Number of adult travelers
-     * @param {number} children - Number of child travelers
-     * @returns {Object} Pricing breakdown
+     * @async
+     * @function calculateDynamicPrice
+     * @param {Object} pkg - The package object containing base_price and coast_type.
+     * @param {string|Date} travelDate - The planned date for the tour.
+     * @param {number} [adults=1] - Number of adult travelers.
+     * @param {number} [children=0] - Number of child travelers (charged at 50% of adult rate).
+     * @returns {Promise<Object>} A detailed pricing breakdown including total, per-traveler costs, and applied rules.
      */
     calculateDynamicPrice: async (pkg, travelDate, adults = 1, children = 0) => {
         try {
@@ -107,7 +112,11 @@ const pricingService = {
     },
 
     /**
-     * Get all active pricing rules
+     * Retrieves all active seasonal pricing rules from the database.
+     * 
+     * @async
+     * @function getAllRules
+     * @returns {Promise<Array<Object>>} A list of all pricing rules.
      */
     getAllRules: async () => {
         const result = await db.query(

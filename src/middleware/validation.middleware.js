@@ -1,8 +1,18 @@
 import { validationResult } from 'express-validator';
 
+// @VALIDATION_CHECK: Shared Validation Result Interceptor
 /**
- * Reusable middleware to handle validation results
- * If there are errors, it returns a 400 Bad Request with a structured errors object
+ * Global Validation Result Handler Middleware
+ * 
+ * Intercepts the request after express-validator rules have run.
+ * If validation errors exist, it halts the request and returns a structured 400 Bad Request response.
+ * Otherwise, it passes control to the next middleware.
+ * 
+ * @function validate
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @param {Function} next - Express next middleware function.
+ * @returns {Object|void} Returns a 400 JSON response if errors exist, otherwise calls next().
  */
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -13,11 +23,10 @@ export const validate = (req, res, next) => {
   const extractedErrors = {};
   errors.array().forEach(err => {
     // Standardize to a flat object where keys are field names and values are messages
-    // If multiple errors exist for one field, the last one wins (or we could make it an array)
     extractedErrors[err.path] = err.msg;
   });
 
-  console.warn(`⚠️ [VALIDATION] Failed for ${req.method} ${req.originalUrl}:`, extractedErrors);
+  console.warn(`⚠️ [VALIDATION_FAILURE] ${req.method} ${req.originalUrl}:`, extractedErrors);
 
   return res.status(400).json({
     success: false,

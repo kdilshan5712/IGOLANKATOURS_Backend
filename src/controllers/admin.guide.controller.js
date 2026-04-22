@@ -2,7 +2,15 @@ import db from "../config/db.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 import { recordAuditLog } from "../utils/auditLogger.js";
 
-// GET all guides with document counts and status
+/**
+ * Retrieves all tour guides with their document counts and current status.
+ * 
+ * @async
+ * @function getAllGuides
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of guides.
+ */
 export const getAllGuides = async (req, res) => {
   try {
     const result = await db.query(`
@@ -20,7 +28,17 @@ export const getAllGuides = async (req, res) => {
   }
 };
 
-// GET all guides with complete details including documents
+/**
+ * Fetches all guides with summary verification status, filtered by user status if provided.
+ * 
+ * @async
+ * @function getAllGuidesWithDocuments
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.status] - Status filter for the guides.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with guide summaries.
+ */
 export const getAllGuidesWithDocuments = async (req, res) => {
   try {
     const { status } = req.query;
@@ -56,7 +74,18 @@ export const getAllGuidesWithDocuments = async (req, res) => {
   }
 };
 
-// GET guide by ID with all documents
+/**
+ * Retrieves detailed information for a specific guide, including all uploaded documents
+ * and approval/rejection history.
+ * 
+ * @async
+ * @function getGuideById
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to fetch.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with comprehensive guide details.
+ */
 export const getGuideById = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -107,7 +136,17 @@ export const getGuideById = async (req, res) => {
   }
 };
 
-// Approve a document
+/**
+ * Marks a specific guide document as verified.
+ * 
+ * @async
+ * @function approveDocument
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.documentId - ID of the document to verify.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming document approval.
+ */
 export const approveDocument = async (req, res) => {
   try {
     const { documentId } = req.params;
@@ -125,7 +164,17 @@ export const approveDocument = async (req, res) => {
   }
 };
 
-// Reject a document (mark as not verified)
+/**
+ * Rejects a specific guide document by marking it as not verified.
+ * 
+ * @async
+ * @function rejectDocument
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.documentId - ID of the document to reject.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming document rejection.
+ */
 export const rejectDocument = async (req, res) => {
   try {
     const { documentId } = req.params;
@@ -143,7 +192,17 @@ export const rejectDocument = async (req, res) => {
   }
 };
 
-// Approve a guide (only if all documents are verified)
+/**
+ * Approves a guide application and activates the user account, provided all documents are verified.
+ * 
+ * @async
+ * @function approveGuide
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to approve.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming guide approval.
+ */
 export const approveGuide = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -171,7 +230,17 @@ export const approveGuide = async (req, res) => {
   }
 };
 
-// Reject a guide (block user)
+/**
+ * Rejects a guide application and blocks the corresponding user account.
+ * 
+ * @async
+ * @function rejectGuide
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to reject.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming guide rejection.
+ */
 export const rejectGuide = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -186,7 +255,19 @@ export const rejectGuide = async (req, res) => {
   }
 };
 
-// NEW: Approve guide with email notification
+/**
+ * Approves a guide with additional actions: timestamping, recording admin info,
+ * sending an email notification, and logging the action.
+ * 
+ * @async
+ * @function approveGuideAction
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to approve.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming guide approval.
+ */
 export const approveGuideAction = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -260,7 +341,21 @@ export const approveGuideAction = async (req, res) => {
   }
 };
 
-// NEW: Reject guide with reason and email notification
+/**
+ * Rejects a guide with a mandatory reason, blocks the user, sends a rejection email,
+ * and records the action in the audit log.
+ * 
+ * @async
+ * @function rejectGuideAction
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to reject.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.reason - Mandatory reason for rejection.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming guide rejection.
+ */
 export const rejectGuideAction = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -331,7 +426,15 @@ export const rejectGuideAction = async (req, res) => {
   }
 };
 
-// GET approved guides only (for assignment dropdown)
+/**
+ * Retrieves a list of all currently approved and active tour guides for assignment.
+ * 
+ * @async
+ * @function getApprovedGuides
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with approved guides.
+ */
 export const getApprovedGuides = async (req, res) => {
   try {
     console.log("[ADMIN] getApprovedGuides called");
@@ -367,7 +470,19 @@ export const getApprovedGuides = async (req, res) => {
   }
 };
 
-// Update guide commission rate
+/**
+ * Updates the commission rate for a specific guide and records the change in the audit log.
+ * 
+ * @async
+ * @function updateGuideCommission
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide.
+ * @param {Object} req.body - Request body.
+ * @param {number} req.body.commissionRate - New commission rate (between 0 and 1).
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated rate.
+ */
 export const updateGuideCommission = async (req, res) => {
   try {
     const { guideId } = req.params;

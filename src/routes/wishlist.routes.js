@@ -1,3 +1,10 @@
+/**
+ * User Wishlist Management Routes
+ * Path: /api/wishlist
+ * 
+ * Provides private endpoints for tourists to view their saved tour packages 
+ * and toggle (add/remove) items from their personal wishlist.
+ */
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 import { getUserWishlist, toggleWishlistItem } from '../controllers/wishlist.controller.js';

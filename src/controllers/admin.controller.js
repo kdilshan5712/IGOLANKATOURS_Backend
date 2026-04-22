@@ -1,6 +1,12 @@
-/* ======================================================
-   ADMIN: GET ALL GUIDE DOCUMENTS
-   ====================================================== */
+/**
+ * Retrieves all guide-uploaded documents for admin verification.
+ * 
+ * @async
+ * @function getAllGuideDocuments
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of guide documents.
+ */
 export const getAllGuideDocuments = async (req, res) => {
   try {
     const result = await db.query(
@@ -23,10 +29,18 @@ export const getAllGuideDocuments = async (req, res) => {
   }
 };
 
-/* ======================================================
-   ADMIN: GET ALL GUIDES WITH DOCUMENTS (FOR DASHBOARD)
-   Query params: status=pending|approved|rejected
-   ====================================================== */
+/**
+ * Fetches guides along with their associated documents, with optional status filtering.
+ * Used for the admin dashboard to manage guide applications.
+ * 
+ * @async
+ * @function getGuidesWithDocuments
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.status] - Status filter ('pending', 'approved', 'rejected').
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with guide summaries and documents.
+ */
 export const getGuidesWithDocuments = async (req, res) => {
   try {
     const { status } = req.query;
@@ -121,9 +135,17 @@ export const getGuidesWithDocuments = async (req, res) => {
   }
 };
 
-/* ======================================================
-   ADMIN: APPROVE GUIDE DOCUMENT
-   ====================================================== */
+/**
+ * Verifies a guide's document. If all required documents are verified, approves the guide.
+ * 
+ * @async
+ * @function approveGuideDocument
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.document_id - ID of the document to approve.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming document approval.
+ */
 export const approveGuideDocument = async (req, res) => {
   try {
     const { document_id } = req.params;
@@ -169,9 +191,17 @@ export const approveGuideDocument = async (req, res) => {
   }
 };
 
-/* ======================================================
-   ADMIN: REJECT GUIDE DOCUMENT
-   ====================================================== */
+/**
+ * Rejects a guide's document by marking verified as false.
+ * 
+ * @async
+ * @function rejectGuideDocument
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.document_id - ID of the document to reject.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming document rejection.
+ */
 export const rejectGuideDocument = async (req, res) => {
   try {
     const { document_id } = req.params;
@@ -189,9 +219,18 @@ import db from "../config/db.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 import supabase from "../config/supabase.js";
 
-/* ======================================================
-   GET DOCUMENT URL - Generate Supabase public URL
-   ====================================================== */
+/**
+ * Generates a Supabase URL (signed or public) for a specific guide document.
+ * 
+ * @async
+ * @function getDocumentUrl
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide.
+ * @param {string} req.params.documentId - ID of the document.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the generated URL.
+ */
 export const getDocumentUrl = async (req, res) => {
   try {
     const { guideId, documentId } = req.params;
@@ -245,9 +284,15 @@ export const getDocumentUrl = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET ALL PENDING GUIDES
-   ====================================================== */
+/**
+ * Retrieves a list of guides with 'pending' status who are not yet approved.
+ * 
+ * @async
+ * @function getPendingGuides
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of pending guides.
+ */
 export const getPendingGuides = async (req, res) => {
   try {
     const result = await db.query(
@@ -284,9 +329,17 @@ export const getPendingGuides = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET DOCUMENTS FOR A GUIDE
-   ====================================================== */
+/**
+ * Lists all documents uploaded by a specific guide.
+ * 
+ * @async
+ * @function getGuideDocuments
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the guide's documents.
+ */
 export const getGuideDocuments = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -335,9 +388,20 @@ export const getGuideDocuments = async (req, res) => {
   }
 };
 
-/* ======================================================
-   APPROVE GUIDE
-   ====================================================== */
+/**
+ * Formally approves a guide application, triggers the activation function,
+ * and sends an approval notification email.
+ * 
+ * @async
+ * @function approveGuide
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to approve.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {string} req.user.user_id - ID of the admin performing the approval.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming guide approval.
+ */
 export const approveGuide = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -425,9 +489,22 @@ export const approveGuide = async (req, res) => {
   }
 };
 
-/* ======================================================
-   REJECT GUIDE
-   ====================================================== */
+/**
+ * Rejects a guide application, updates their status to 'rejected' with a reason,
+ * and sends a rejection notification email.
+ * 
+ * @async
+ * @function rejectGuide
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to reject.
+ * @param {Object} req.body - Request body.
+ * @param {string} [req.body.reason] - Optional cancellation reason.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {string} req.user.user_id - ID of the admin performing the rejection.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming guide rejection.
+ */
 export const rejectGuide = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -506,9 +583,18 @@ export const rejectGuide = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET ALL GUIDES (WITH ENHANCED FIELDS)
-   ====================================================== */
+/**
+ * Retrieves all registered guides with optional status filtering.
+ * Returns comprehensive guide data including verification details and document counts.
+ * 
+ * @async
+ * @function getAllGuides
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.status] - User status filter ('active', 'pending', 'rejected').
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of all guides.
+ */
 export const getAllGuides = async (req, res) => {
   try {
     const { status } = req.query; // Filter by status: pending, approved, rejected
@@ -560,9 +646,17 @@ export const getAllGuides = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET GUIDE DETAILS (ENHANCED)
-   ====================================================== */
+/**
+ * Fetches detailed information for a single guide, including their verification documents.
+ * 
+ * @async
+ * @function getGuideDetails
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to fetch.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with guide profile and documents.
+ */
 export const getGuideDetails = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -638,11 +732,18 @@ export const getGuideDetails = async (req, res) => {
   }
 };
 
-/* ======================================================
-   UPLOAD ADMIN PROFILE PHOTO
-   POST /api/admin/profile-photo
-   Auth: Required (Admin only)
-   ====================================================== */
+/**
+ * Uploads a profile photo for the authenticated admin to Supabase storage
+ * and updates the admin profile in the database.
+ * 
+ * @async
+ * @function uploadProfilePhoto
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} req.file - The uploaded file object (from Multer).
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the new photo URL.
+ */
 export const uploadProfilePhoto = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -714,11 +815,16 @@ export const uploadProfilePhoto = async (req, res) => {
   }
 };
 
-/* ======================================================
-   DELETE ADMIN PROFILE PHOTO
-   DELETE /api/admin/profile-photo
-   Auth: Required (Admin only)
-   ====================================================== */
+/**
+ * Deletes the authenticated admin's profile photo from storage and database.
+ * 
+ * @async
+ * @function deleteProfilePhoto
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming photo deletion.
+ */
 export const deleteProfilePhoto = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -759,9 +865,15 @@ export const deleteProfilePhoto = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET PENDING GUIDE APPLICATIONS (USING VIEW)
-   ====================================================== */
+/**
+ * Retrieves all pending guide applications using the 'pending_guide_applications' view.
+ * 
+ * @async
+ * @function getPendingApplications
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with pending applications.
+ */
 export const getPendingApplications = async (req, res) => {
   try {
     const result = await db.query(
@@ -782,9 +894,15 @@ export const getPendingApplications = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET APPROVED GUIDES (USING VIEW)
-   ====================================================== */
+/**
+ * Retrieves all approved guides using the 'approved_guides' view.
+ * 
+ * @async
+ * @function getApprovedGuides
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with approved guides.
+ */
 export const getApprovedGuides = async (req, res) => {
   try {
     const result = await db.query(
@@ -804,10 +922,19 @@ export const getApprovedGuides = async (req, res) => {
     });
   }
 };
-/* ======================================================
-   ADMIN: APPROVE GUIDE (DASHBOARD)
-   PATCH /api/admin/guides/:guideId/approve
-   ====================================================== */
+/**
+ * Alternative action to approve a guide from the dashboard.
+ * Sets approved status, activates the user, and verifies all documents.
+ * 
+ * @async
+ * @function approveGuideAction
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming guide approval.
+ */
 export const approveGuideAction = async (req, res) => {
   try {
     const { guideId } = req.params;
@@ -882,10 +1009,20 @@ export const approveGuideAction = async (req, res) => {
   }
 };
 
-/* ======================================================
-   ADMIN: REJECT GUIDE (DASHBOARD)
-   PATCH /api/admin/guides/:guideId/reject
-   ====================================================== */
+/**
+ * Alternative action to reject a guide from the dashboard.
+ * Marks guide as not approved, rejects the user status, and sends notification.
+ * 
+ * @async
+ * @function rejectGuideAction
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.guideId - ID of the guide to reject.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.rejection_reason - Required reason for rejection.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming rejection.
+ */
 export const rejectGuideAction = async (req, res) => {
   try {
     const { guideId } = req.params;

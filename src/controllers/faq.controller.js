@@ -1,9 +1,13 @@
 import db from '../config/db.js';
 
 /**
- * GET ALL FAQS
- * GET /api/faqs
- * Auth: Public
+ * Retrieves all active FAQs and groups them by category for the public FAQ page.
+ * 
+ * @async
+ * @function getAllFaqs
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with grouped FAQ data.
  */
 export const getAllFaqs = async (req, res) => {
     try {
@@ -40,9 +44,13 @@ export const getAllFaqs = async (req, res) => {
     }
 };
 /**
- * GET ALL FAQS (FOR ADMIN - Flat list)
- * GET /api/admin/faqs
- * Auth: Admin
+ * Retrieves a flat list of all FAQs for administrative management.
+ * 
+ * @async
+ * @function getAdminFaqs
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of all FAQs.
  */
 export const getAdminFaqs = async (req, res) => {
     try {
@@ -65,9 +73,17 @@ export const getAdminFaqs = async (req, res) => {
 };
 
 /**
- * CREATE NEW FAQ
- * POST /api/admin/faqs
- * Auth: Admin
+ * Creates a new FAQ entry with a specified category, question, and answer.
+ * 
+ * @async
+ * @function createFaq
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - FAQ details.
+ * @param {string} req.body.category - Category the FAQ belongs to.
+ * @param {string} req.body.question - The question text.
+ * @param {string} req.body.answer - The answer text.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the created FAQ.
  */
 export const createFaq = async (req, res) => {
     const { category, question, answer } = req.body;
@@ -103,9 +119,20 @@ export const createFaq = async (req, res) => {
 };
 
 /**
- * UPDATE FAQ
- * PUT /api/admin/faqs/:id
- * Auth: Admin
+ * Updates an existing FAQ's details or activation status.
+ * 
+ * @async
+ * @function updateFaq
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the FAQ to update.
+ * @param {Object} req.body - Updated FAQ data.
+ * @param {string} [req.body.category] - Updated category.
+ * @param {string} [req.body.question] - Updated question.
+ * @param {string} [req.body.answer] - Updated answer.
+ * @param {boolean} [req.body.is_active] - Updated activation status.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated FAQ.
  */
 export const updateFaq = async (req, res) => {
     const { id } = req.params;
@@ -146,9 +173,15 @@ export const updateFaq = async (req, res) => {
 };
 
 /**
- * DELETE FAQ
- * DELETE /api/admin/faqs/:id
- * Auth: Admin
+ * Deletes an FAQ entry permanently from the database.
+ * 
+ * @async
+ * @function deleteFaq
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the FAQ to delete.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
  */
 export const deleteFaq = async (req, res) => {
     const { id } = req.params;

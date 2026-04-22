@@ -1,6 +1,9 @@
 /**
- * GALLERY ROUTES
- * Admin routes for managing gallery images
+ * Admin Gallery Management Routes
+ * Path: /api/admin/gallery
+ * 
+ * Provides endpoints for managing the public gallery, including 
+ * image uploads, category management, reordering, and analytics.
  */
 
 import express from 'express';

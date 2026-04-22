@@ -3,8 +3,15 @@ import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 import { NotificationService } from "../utils/notificationService.js";
 
 /**
- * GET ALL BOOKINGS (Admin)
- * GET /api/admin/bookings
+ * Retrieves all bookings with optional status filtering.
+ * 
+ * @async
+ * @function getAllBookings
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.status] - Optional booking status to filter by.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of bookings.
  */
 export const getAllBookings = async (req, res) => {
   try {
@@ -62,8 +69,18 @@ export const getAllBookings = async (req, res) => {
 };
 
 /**
- * UPDATE BOOKING STATUS
- * PATCH /api/admin/bookings/:bookingId/status
+ * Updates the status of a specific booking and triggers related notifications.
+ * If status is 'completed', calculates and sets the guide's commission.
+ * 
+ * @async
+ * @function updateBookingStatus
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking to update.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.status - New status ('pending', 'confirmed', 'completed', 'cancelled').
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated booking details.
  */
 export const updateBookingStatus = async (req, res) => {
   try {
@@ -182,8 +199,15 @@ export const updateBookingStatus = async (req, res) => {
 };
 
 /**
- * GET BOOKING DETAILS
- * GET /api/admin/bookings/:bookingId
+ * Fetches detailed information for a specific booking.
+ * 
+ * @async
+ * @function getBookingDetails
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking to fetch.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the booking details.
  */
 export const getBookingDetails = async (req, res) => {
   try {
@@ -227,8 +251,15 @@ export const getBookingDetails = async (req, res) => {
 };
 
 /**
- * GET AVAILABLE GUIDES
- * GET /api/admin/bookings/available-guides?date=YYYY-MM-DD
+ * Retrieves a list of available tour guides, optionally checking for a specific date.
+ * 
+ * @async
+ * @function getAvailableGuides
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.date] - Optional date (YYYY-MM-DD) to check guide availability.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of available guides.
  */
 export const getAvailableGuides = async (req, res) => {
   try {
@@ -291,8 +322,20 @@ export const getAvailableGuides = async (req, res) => {
 };
 
 /**
- * ASSIGN GUIDE TO BOOKING
- * POST /api/admin/bookings/:bookingId/assign-guide
+ * Assigns a guide to a confirmed booking, calculates dates, and sends notifications.
+ * 
+ * @async
+ * @function assignGuideToBooking
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.guideId - UUID of the guide to assign.
+ * @param {string} [req.body.adminNotes] - Optional notes from the admin.
+ * @param {Object} req.user - Authenticated user object (admin).
+ * @param {string} req.user.user_id - ID of the admin performing the assignment.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming the assignment.
  */
 export const assignGuideToBooking = async (req, res) => {
   try {
@@ -590,8 +633,15 @@ export const assignGuideToBooking = async (req, res) => {
 };
 
 /**
- * UNASSIGN GUIDE FROM BOOKING
- * POST /api/admin/bookings/:bookingId/unassign-guide
+ * Removes the assigned guide from a booking.
+ * 
+ * @async
+ * @function unassignGuideFromBooking
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking to unassign.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated booking.
  */
 export const unassignGuideFromBooking = async (req, res) => {
   try {

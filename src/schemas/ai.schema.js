@@ -1,12 +1,16 @@
-import { body } from 'express-validator';
-
 /**
- * AI Service Validation Schemas
+ * AI Assistant Validation Schemas
+ * 
+ * Defines express-validator rules for interactions with the AI chatbot components, 
+ * ensuring that session data, messages, and history syncs adhere to expected data types.
+ * 
+ * @namespace aiSchemas
  */
 export const aiSchemas = {
   /**
    * Validation for saving a chatbot session
    */
+  // @VALIDATION_RULE: AI Session Storage
   saveSession: [
     body('session_id')
       .notEmpty().withMessage('Session ID is required')
@@ -30,6 +34,7 @@ export const aiSchemas = {
   /**
    * Validation for syncing chat history
    */
+  // @VALIDATION_RULE: AI History Synchronization
   syncHistory: [
     body('sessionId')
       .notEmpty().withMessage('Session ID is required')

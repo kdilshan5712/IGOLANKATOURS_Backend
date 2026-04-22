@@ -4,14 +4,24 @@
  */
 
 import db from '../config/db.js';
-import { sendEmail } from '../utils/sendEmail.js';
-import { emailTemplates } from '../utils/sendEmail.js';
+import { sendEmail, emailTemplates } from '../utils/sendEmail.js';
 
 /**
- * 1️⃣ PUBLIC: SUBMIT CONTACT MESSAGE
- * POST /api/contact
- * Body: { name, email, phone, subject, message }
- * No authentication required
+ * Submits a new contact message from the public contact form.
+ * Validates inputs and sends non-blocking notification emails to both the user and admin.
+ * 
+ * @async
+ * @function submitContactMessage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Contact form data.
+ * @param {string} req.body.name - Name of the sender.
+ * @param {string} req.body.email - Email of the sender.
+ * @param {string} [req.body.phone] - Phone number of the sender.
+ * @param {string} req.body.subject - Subject of the message.
+ * @param {string} req.body.message - Content of the message.
+ * @param {string} [req.body.session_id] - Optional AI chatbot session ID.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming submission.
  */
 export const submitContactMessage = async (req, res) => {
   try {
@@ -64,8 +74,9 @@ export const submitContactMessage = async (req, res) => {
 
     // Send confirmation email to user (non-blocking)
     try {
-      const userEmailContent = emailTemplates.contactConfirmation(name);
-      await sendEmail(email, "We received your message", userEmailContent);
+      // contactConfirmation returns raw HTML (not an object)
+      const userEmailHtml = emailTemplates.contactConfirmation(name);
+      await sendEmail(email, "We Received Your Message - I GO LANKA TOURS", userEmailHtml);
     } catch (emailErr) {
       console.log("Error sending user confirmation email (non-blocking):", emailErr.message);
     }
@@ -81,8 +92,9 @@ export const submitContactMessage = async (req, res) => {
 
       if (adminResult.rows.length > 0) {
         const adminEmail = adminResult.rows[0].email;
-        const adminEmailContent = emailTemplates.newContactMessage(name, email, subject, message);
-        await sendEmail(adminEmail, `New Contact Message from ${name}`, adminEmailContent);
+        // newContactMessage returns raw HTML
+        const adminEmailHtml = emailTemplates.newContactMessage(name, email, subject, message);
+        await sendEmail(adminEmail, `🚨 New Contact Message from ${name}`, adminEmailHtml);
       }
     } catch (emailErr) {
       console.log("Error sending admin notification email (non-blocking):", emailErr.message);
@@ -95,6 +107,7 @@ export const submitContactMessage = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Handled by server.js global error middleware
     console.error("submitContactMessage error:", err);
     res.status(500).json({
       success: false,
@@ -105,8 +118,17 @@ export const submitContactMessage = async (req, res) => {
 };
 
 /**
- * 2️⃣ ADMIN: GET ALL CONTACT MESSAGES
- * GET /api/admin/contacts?status=new&limit=50&offset=0
+ * Retrieves a list of contact messages with optional status filtering and pagination.
+ * 
+ * @async
+ * @function getContactMessages
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.status='all'] - Filter by status ('new', 'read', 'responded', 'archived').
+ * @param {number} [req.query.limit=50] - Number of records to return.
+ * @param {number} [req.query.offset=0] - Number of records to skip.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the messages and status counts.
  */
 export const getContactMessages = async (req, res) => {
   try {
@@ -158,6 +180,7 @@ export const getContactMessages = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Propagates to centralized exception handler
     console.error("getContactMessages error:", err);
     res.status(500).json({
       success: false,
@@ -168,8 +191,16 @@ export const getContactMessages = async (req, res) => {
 };
 
 /**
- * 3️⃣ ADMIN: GET SINGLE CONTACT MESSAGE
- * GET /api/admin/contacts/:messageId
+ * Retrieves a single contact message by ID and marks it as 'read' if it was 'new'.
+ * 
+ * @async
+ * @function getContactMessage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.messageId - ID of the message to retrieve.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the message details.
  */
 export const getContactMessage = async (req, res) => {
   try {
@@ -217,6 +248,7 @@ export const getContactMessage = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Handled by global handler in server.js
     console.error("getContactMessage error:", err);
     res.status(500).json({
       success: false,
@@ -227,9 +259,19 @@ export const getContactMessage = async (req, res) => {
 };
 
 /**
- * 4️⃣ ADMIN: UPDATE CONTACT MESSAGE STATUS
- * PATCH /api/admin/contacts/:messageId
- * Body: { status, notes }
+ * Updates the status or administrative notes of a contact message.
+ * 
+ * @async
+ * @function updateContactMessage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.messageId - ID of the message to update.
+ * @param {Object} req.body - Update payload.
+ * @param {string} [req.body.status] - New status for the message.
+ * @param {string} [req.body.notes] - Administrative notes.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated message.
  */
 export const updateContactMessage = async (req, res) => {
   try {
@@ -303,9 +345,18 @@ export const updateContactMessage = async (req, res) => {
 };
 
 /**
- * 4.5️⃣ ADMIN: REPLY TO CONTACT MESSAGE
- * POST /api/admin/contacts/:messageId/reply
- * Body: { message }
+ * Sends an email reply to a contact message and updates its status to 'responded'.
+ * 
+ * @async
+ * @function replyContactMessage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.messageId - ID of the message to reply to.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.message - Content of the reply.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming the reply was saved and sent.
  */
 export const replyContactMessage = async (req, res) => {
   try {
@@ -329,47 +380,61 @@ export const replyContactMessage = async (req, res) => {
 
     const contactData = messageCheck.rows[0];
 
-    // Send the email reply
-    const emailTemplate = emailTemplates.contactReply(contactData.name, message, contactData.subject);
-    const emailSent = await sendEmail(contactData.email, emailTemplate.subject, emailTemplate.html);
-
-    if (!emailSent) {
-      return res.status(500).json({ success: false, message: "Failed to send email reply" });
-    }
-
-    // Update message status to "responded" and append note
+    // === SAVE REPLY FIRST (always succeeds regardless of email) ===
     const updateQuery = `
       UPDATE contact_messages 
       SET 
         status = 'responded',
-        notes = CONCAT(COALESCE(notes, ''), '\n[Admin Reply Sent]: ', $1::text),
+        notes = CONCAT(COALESCE(notes, ''), E'\n[Admin Reply Sent]: ', $1::text),
         read_by = COALESCE(read_by, $2),
         read_at = COALESCE(read_at, NOW())
       WHERE message_id = $3
       RETURNING *
     `;
-
     const result = await db.query(updateQuery, [message, adminId, messageId]);
+
+    // === SEND EMAIL (non-blocking — never fail the request on email error) ===
+    let emailStatus = 'sent';
+    try {
+      const emailTemplate = emailTemplates.contactReply(contactData.name, message, contactData.subject);
+      const emailResult = await sendEmail(contactData.email, emailTemplate.subject, emailTemplate.html);
+      if (!emailResult || !emailResult.success) {
+        emailStatus = 'failed';
+        console.error(`❌ Failed to email reply to ${contactData.email}: ${emailResult?.error}`);
+      }
+    } catch (emailErr) {
+      emailStatus = 'failed';
+      console.error(`❌ Exception sending reply email to ${contactData.email}:`, emailErr.message);
+    }
 
     res.json({
       success: true,
-      message: "Reply sent successfully",
+      message: emailStatus === 'sent' ? "Reply sent successfully" : "Reply saved, but email delivery failed. Please check SMTP configuration.",
+      emailDelivered: emailStatus === 'sent',
       contactMessage: result.rows[0]
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Propgates to server.js
     console.error("replyContactMessage error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to send contact reply",
+      message: "Failed to save contact reply",
       error: err.message
     });
   }
 };
 
 /**
- * 5️⃣ ADMIN: DELETE CONTACT MESSAGE
- * DELETE /api/admin/contacts/:messageId
+ * Deletes a contact message record permanently from the database.
+ * 
+ * @async
+ * @function deleteContactMessage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.messageId - ID of the message to delete.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
  */
 export const deleteContactMessage = async (req, res) => {
   try {
@@ -412,8 +477,16 @@ export const deleteContactMessage = async (req, res) => {
 };
 
 /**
- * 6️⃣ ADMIN: MARK MESSAGE AS READ (SHORTCUT)
- * PATCH /api/admin/contacts/:messageId/read
+ * Marks a contact message as 'read' without retrieving its full details.
+ * 
+ * @async
+ * @function markMessageAsRead
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.messageId - ID of the message.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming the update.
  */
 export const markMessageAsRead = async (req, res) => {
   try {

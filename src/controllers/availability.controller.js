@@ -1,8 +1,20 @@
 import db from "../config/db.js";
 
-/* ======================================================
-   CREATE/UPDATE GUIDE AVAILABILITY
-   ====================================================== */
+/**
+ * Creates or updates the availability status for a guide on a specific date.
+ * Validates the date is not in the past and the guide is approved.
+ * 
+ * @async
+ * @function setAvailability
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Availability details.
+ * @param {string} req.body.date - Date for which to set availability (YYYY-MM-DD).
+ * @param {string} req.body.status - Availability status ('available' or 'unavailable').
+ * @param {Object} req.user - Authenticated user object.
+ * @param {string} req.user.user_id - ID of the authenticated user.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming availability update.
+ */
 export const setAvailability = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -88,9 +100,17 @@ export const setAvailability = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET GUIDE AVAILABILITY
-   ====================================================== */
+/**
+ * Retrieves all upcoming availability records for the authenticated guide.
+ * 
+ * @async
+ * @function getAvailability
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {string} req.user.user_id - ID of the authenticated user.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the guide's upcoming availability.
+ */
 export const getAvailability = async (req, res) => {
   try {
     const userId = req.user.user_id;

@@ -1,3 +1,11 @@
+/**
+ * Comprehensive Tour Guide Operational Routes
+ * Path: /api/guide
+ * 
+ * Orchestrates all guide-facing features including professional registration, 
+ * identity document uploads, profile management, dashboard analytics, 
+ * tour booking assignment tracking, availability scheduling, and payout management.
+ */
 import express from "express";
 import multer from "multer";
 import upload from "../middleware/upload.middleware.js";

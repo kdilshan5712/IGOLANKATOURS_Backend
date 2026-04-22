@@ -3,9 +3,16 @@ import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 import { NotificationService } from "../utils/notificationService.js";
 import { recordAuditLog } from "../utils/auditLogger.js";
 
-/* ======================================================
-   DASHBOARD STATISTICS
-   ====================================================== */
+/**
+ * Retrieves comprehensive dashboard statistics including user counts, booking status,
+ * revenue, and top-performing packages.
+ * 
+ * @async
+ * @function getDashboardStats
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the statistics.
+ */
 export const getDashboardStats = async (req, res) => {
   try {
     const statsResult = await db.query(`
@@ -80,9 +87,17 @@ export const getDashboardStats = async (req, res) => {
   }
 };
 
-/* ======================================================
-   RECENT BOOKINGS
-   ====================================================== */
+/**
+ * Fetches recently created bookings with associated package and tourist information.
+ * 
+ * @async
+ * @function getRecentBookings
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {number} [req.query.limit=10] - Number of bookings to fetch.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the recent bookings.
+ */
 export const getRecentBookings = async (req, res) => {
   try {
     const limit = req.query.limit || 10;
@@ -118,9 +133,15 @@ export const getRecentBookings = async (req, res) => {
   }
 };
 
-/* ======================================================
-   PACKAGES MANAGEMENT
-   ====================================================== */
+/**
+ * Lists all tour packages with their booking counts, review counts, and average ratings.
+ * 
+ * @async
+ * @function getAllPackages
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of packages.
+ */
 export const getAllPackages = async (req, res) => {
   try {
     const result = await db.query(`
@@ -151,6 +172,27 @@ export const getAllPackages = async (req, res) => {
   }
 };
 
+/**
+ * Creates a new tour package and records the action in the audit log.
+ * 
+ * @async
+ * @function createPackage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Package details.
+ * @param {string} req.body.name - Name of the package.
+ * @param {string} req.body.description - Package description.
+ * @param {number} req.body.price - Base price.
+ * @param {string} req.body.duration - Duration (e.g., '3 Days').
+ * @param {string} req.body.category - Category (e.g., 'Adventure').
+ * @param {string} [req.body.budget] - Budget level.
+ * @param {string} [req.body.hotel] - Hotel details.
+ * @param {number} [req.body.rating] - Initial rating.
+ * @param {string} [req.body.image] - Image URL.
+ * @param {string} [req.body.season_type='year_round'] - Best season.
+ * @param {string} [req.body.coast_type='mixed'] - Geographic area.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the created package.
+ */
 export const createPackage = async (req, res) => {
   try {
     const {
@@ -198,6 +240,18 @@ export const createPackage = async (req, res) => {
   }
 };
 
+/**
+ * Updates an existing tour package and records the changes in the audit log.
+ * 
+ * @async
+ * @function updatePackage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.packageId - ID of the package to update.
+ * @param {Object} req.body - Fields to update.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated package.
+ */
 export const updatePackage = async (req, res) => {
   try {
     const { packageId } = req.params;
@@ -299,6 +353,17 @@ export const updatePackage = async (req, res) => {
   }
 };
 
+/**
+ * Deletes a tour package and records the action in the audit log.
+ * 
+ * @async
+ * @function deletePackage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.packageId - ID of the package to delete.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
+ */
 export const deletePackage = async (req, res) => {
   try {
     const { packageId } = req.params;
@@ -336,9 +401,15 @@ export const deletePackage = async (req, res) => {
   }
 };
 
-/* ======================================================
-   BOOKINGS MANAGEMENT
-   ====================================================== */
+/**
+ * Retrieves all bookings across the system with detailed package, tourist, and guide information.
+ * 
+ * @async
+ * @function getAllBookings
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of bookings.
+ */
 export const getAllBookings = async (req, res) => {
   try {
     const result = await db.query(`
@@ -376,6 +447,19 @@ export const getAllBookings = async (req, res) => {
   }
 };
 
+/**
+ * Updates the status of a booking and logs the transition in the audit log.
+ * 
+ * @async
+ * @function updateBookingStatus
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking to update.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.status - New booking status.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated booking.
+ */
 export const updateBookingStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -423,9 +507,15 @@ export const updateBookingStatus = async (req, res) => {
   }
 };
 
-/* ======================================================
-   REVIEWS MANAGEMENT
-   ====================================================== */
+/**
+ * Lists all tour reviews with associated package and user information.
+ * 
+ * @async
+ * @function getAllReviews
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of reviews.
+ */
 export const getAllReviews = async (req, res) => {
   try {
     const result = await db.query(`
@@ -453,6 +543,17 @@ export const getAllReviews = async (req, res) => {
   }
 };
 
+/**
+ * Approves a pending tour review and records the action in the audit log.
+ * 
+ * @async
+ * @function approveReview
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.reviewId - ID of the review to approve.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated review.
+ */
 export const approveReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
@@ -496,6 +597,17 @@ export const approveReview = async (req, res) => {
   }
 };
 
+/**
+ * Rejects a tour review and records the action in the audit log.
+ * 
+ * @async
+ * @function rejectReview
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.reviewId - ID of the review to reject.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated review.
+ */
 export const rejectReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
@@ -539,9 +651,16 @@ export const rejectReview = async (req, res) => {
   }
 };
 
-/* ======================================================
-   USERS MANAGEMENT
-   ====================================================== */
+/**
+ * Retrieves all registered users (tourists and guides) with their contact information
+ * and total booking counts.
+ * 
+ * @async
+ * @function getAllUsers
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of users.
+ */
 export const getAllUsers = async (req, res) => {
   try {
     const result = await db.query(`
@@ -587,6 +706,19 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+/**
+ * Updates a user's status and logs the action in the audit log.
+ * 
+ * @async
+ * @function updateUserStatus
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.userId - ID of the user to update.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.status - New user status.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming the update.
+ */
 export const updateUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -630,9 +762,19 @@ export const updateUserStatus = async (req, res) => {
   }
 };
 
-/* ======================================================
-   CONTACT MESSAGES
-   ====================================================== */
+/**
+ * Marks a contact message as read and records the timestamp and the administrator's ID.
+ * 
+ * @async
+ * @function markMessageAsRead
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.messageId - ID of the contact message.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {string} req.user.user_id - ID of the admin marking the message as read.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated message.
+ */
 export const markMessageAsRead = async (req, res) => {
   try {
     const { messageId } = req.params;
@@ -666,9 +808,15 @@ export const markMessageAsRead = async (req, res) => {
   }
 };
 
-/* ======================================================
-   CUSTOM TOUR REQUESTS (CHATBOT SESSIONS)
-   ====================================================== */
+/**
+ * Retrieves all custom tour requests (chatbot sessions) with linked tourist and contact message details.
+ * 
+ * @async
+ * @function getCustomTourRequests
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of custom tour requests.
+ */
 export const getCustomTourRequests = async (req, res) => {
   try {
     const result = await db.query(`
@@ -700,6 +848,19 @@ export const getCustomTourRequests = async (req, res) => {
   }
 };
 
+/**
+ * Updates the status and details of a custom tour request. Handles approvals,
+ * recommendations, and itinerary JSON. Records the action in the audit log.
+ * 
+ * @async
+ * @function updateCustomTourStatus
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.requestId - UUID of the session to update.
+ * @param {Object} req.body - Fields to update (status, recommendations, price, etc.).
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated request.
+ */
 export const updateCustomTourStatus = async (req, res) => {
   try {
     const { requestId } = req.params;
@@ -815,6 +976,19 @@ export const updateCustomTourStatus = async (req, res) => {
   }
 };
 
+/**
+ * Sends a custom quote reply to a tourist for their custom tour request via email.
+ * 
+ * @async
+ * @function replyCustomTourRequest
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.requestId - ID of the request being replied to.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.message - The quote/message content to send.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming the reply was sent.
+ */
 export const replyCustomTourRequest = async (req, res) => {
   try {
     const { requestId } = req.params;

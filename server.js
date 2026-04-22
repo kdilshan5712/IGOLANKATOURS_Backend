@@ -60,7 +60,12 @@ app.use(helmet({
         "http://localhost:8000", 
         "http://localhost:5000",
         "https://api.igolankatours.com",
-        "https://www.igolankatours.com"
+        "https://www.igolankatours.com",
+        "https://igolankatours.com",
+        "https://*.igolankatours.com",
+        "https://api-backend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io",
+        "https://web-frontend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io",
+        "https://overbridgenet.com"
       ],
       "frame-ancestors": ["'none'"], // Prevent clickjacking
     },
@@ -91,6 +96,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
   "https://www.igolankatours.com",
   "https://igolankatours.com",
+  "https://api-backend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io",
+  "https://web-frontend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io",
   "http://localhost:5174",
   "http://localhost:5175",
   "http://localhost:3000",
@@ -282,7 +289,11 @@ app.use("/api/ai", async (req, res) => {
 
 /* -------------------- ERROR HANDLING -------------------- */
 
-// 404 handler for undefined routes
+// @ERROR_HANDLER: 404 Route Not Found
+/**
+ * Catch-all middleware for handling undefined routes.
+ * Generates a 404 response with the requested path for API clients.
+ */
 app.use((req, res, next) => {
   res.status(404).json({
     message: "Route not found",
@@ -290,7 +301,16 @@ app.use((req, res, next) => {
   });
 });
 
-// Multer / file upload errors
+// @ERROR_HANDLER: Global Exception & File Upload Handler
+/**
+ * Global Error Handling Middleware
+ * Centralizes error responses for:
+ * 1. Multer/File upload errors (Size, Count, Type)
+ * 2. Database validation/timeout errors
+ * 3. Unhandled application exceptions
+ * 
+ * In production, sensitive error details (stack traces) are hidden for security.
+ */
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {

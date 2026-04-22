@@ -2,17 +2,22 @@ import db from "../config/db.js";
 import pricingService from "../services/pricing.service.js";
 
 /**
- * GET ALL PACKAGES (PUBLIC - No auth required)
- * GET /api/packages
+ * Retrieves all active tour packages with optional filtering and pagination.
+ * Calculates dynamic "From" pricing based on the current season for each package.
  * 
- * Query Parameters:
- * - category: Filter by category (Cultural, Beach, Wildlife, Adventure, Luxury)
- * - budget: Filter by budget type (budget, mid, luxury)
- * - min_price: Minimum price filter
- * - max_price: Maximum price filter
- * - search: Search in name and description
- * - limit: Number of results per page (default: 50)
- * - offset: Pagination offset (default: 0)
+ * @async
+ * @function getAllPackages
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.category] - Filter by category (Cultural, Beach, etc.).
+ * @param {string} [req.query.budget] - Filter by budget level ('budget', 'mid', 'luxury').
+ * @param {number} [req.query.min_price] - Minimum base price.
+ * @param {number} [req.query.max_price] - Maximum base price.
+ * @param {string} [req.query.search] - Search term for name/description.
+ * @param {number} [req.query.limit=50] - Number of records per page.
+ * @param {number} [req.query.offset=0] - Pagination offset.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with filtered packages and total count.
  */
 export const getAllPackages = async (req, res) => {
   const {
@@ -147,6 +152,7 @@ export const getAllPackages = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Caught and sent to the global error middleware in server.js
     console.error("❌ Get packages error:", err);
     res.status(500).json({
       success: false,
@@ -156,10 +162,16 @@ export const getAllPackages = async (req, res) => {
 };
 
 /**
- * GET SINGLE PACKAGE BY ID (PUBLIC - No auth required)
- * GET /api/packages/:id
+ * Retrieves full details for a single tour package by its ID.
+ * Includes parsed itinerary, inclusion lists, and comprehensive review statistics.
  * 
- * Returns full package details for the package detail page
+ * @async
+ * @function getPackageById
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - UUID of the package.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with complete package data and review stats.
  */
 export const getPackageById = async (req, res) => {
   const { id } = req.params;
@@ -311,6 +323,7 @@ export const getPackageById = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Handled by centralized error handler
     console.error("❌ Get package error:", err);
     res.status(500).json({
       success: false,
@@ -320,11 +333,15 @@ export const getPackageById = async (req, res) => {
 };
 
 /**
- * GET FEATURED PACKAGES (PUBLIC)
- * GET /api/packages/featured
+ * Retrieves a list of featured tour packages based on high user ratings.
  * 
- * Returns top-rated packages (rating >= 4.8)
- * Used for homepage or featured sections
+ * @async
+ * @function getFeaturedPackages
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {number} [req.query.limit=10] - Max number of featured packages to return.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with featured packages.
  */
 export const getFeaturedPackages = async (req, res) => {
   const { limit = 10 } = req.query;
@@ -358,6 +375,7 @@ export const getFeaturedPackages = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Handled by server.js
     console.error("❌ Get featured packages error:", err);
     res.status(500).json({
       success: false,
@@ -367,10 +385,13 @@ export const getFeaturedPackages = async (req, res) => {
 };
 
 /**
- * GET PACKAGE CATEGORIES (PUBLIC)
- * GET /api/packages/categories
+ * Retrieves a list of unique categories used across all active tour packages.
  * 
- * Returns unique categories for filtering UI
+ * @async
+ * @function getCategories
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of categories.
  */
 export const getCategories = async (req, res) => {
   try {
@@ -398,10 +419,14 @@ export const getCategories = async (req, res) => {
 };
 
 /**
- * GET PACKAGE STATS (PUBLIC)
- * GET /api/packages/stats
+ * Retrieves aggregated statistics about available tour packages, 
+ * including counts by category, budget, and price ranges.
  * 
- * Returns statistics about packages (total, by category, price ranges)
+ * @async
+ * @function getPackageStats
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with package statistics.
  */
 export const getPackageStats = async (req, res) => {
   try {
@@ -462,9 +487,20 @@ export const getPackageStats = async (req, res) => {
 };
 
 /**
- * CALCULATE PACKAGE PRICE (PUBLIC)
- * GET /api/packages/:id/price
- * Query: date (YYYY-MM-DD), travelers (int)
+ * Calculates the precise price for a package given a specific travel date and traveler count.
+ * Accounts for seasonal variations and group size adjustments.
+ * 
+ * @async
+ * @function calculatePackagePrice
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - UUID of the package.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} req.query.date - Planned travel date (YYYY-MM-DD).
+ * @param {number} [req.query.adults] - Number of adult travelers.
+ * @param {number} [req.query.children] - Number of child travelers.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the calculated dynamic pricing.
  */
 export const calculatePackagePrice = async (req, res) => {
   const { id } = req.params;
@@ -513,6 +549,7 @@ export const calculatePackagePrice = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Logged and forwarded to global handler
     console.error("❌ Calculate price error:", err);
     res.status(500).json({
       success: false,

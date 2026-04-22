@@ -1,10 +1,18 @@
 import db from "../config/db.js";
 
-// ======================================================
-//    GET TOUR MESSAGES
-//    GET /api/chat/:bookingId
-//    Auth: Required (Tourist or Assigned Guide)
-//    ====================================================== */
+/**
+ * Retrieves all messages related to a specific tour booking.
+ * Validates permissions and marks incoming messages as read for non-admin users.
+ * 
+ * @async
+ * @function getTourMessages
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking to fetch messages for.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with messaging history and authorization status.
+ */
 export const getTourMessages = async (req, res) => {
     const { bookingId } = req.params;
     const userId = req.user.user_id || req.user.id;
@@ -85,11 +93,18 @@ export const getTourMessages = async (req, res) => {
     }
 };
 
-// ======================================================
-//    GET CHATBOT MESSAGES
-//    GET /api/chat/session/:sessionId
-//    Auth: Required
-//    ====================================================== */
+/**
+ * Retrieves messaging history for a specific AI chatbot session.
+ * 
+ * @async
+ * @function getChatbotMessages
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.sessionId - UUID of the chatbot session.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the session's message history.
+ */
 export const getChatbotMessages = async (req, res) => {
     const { sessionId } = req.params;
     const userId = req.user.user_id || req.user.id;
@@ -147,11 +162,21 @@ export const getChatbotMessages = async (req, res) => {
     }
 };
 
-// ======================================================
-//    SEND CHATBOT MESSAGE
-//    POST /api/chat/session/:sessionId
-//    Auth: Required
-//    ====================================================== */
+/**
+ * Sends a message within an AI chatbot session.
+ * Handles both user-to-admin and admin-to-user routing.
+ * 
+ * @async
+ * @function sendChatbotMessage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.sessionId - UUID of the chatbot session.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.message - Content of the message.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the newly created message.
+ */
 export const sendChatbotMessage = async (req, res) => {
     const { sessionId } = req.params;
     const { message } = req.body;
@@ -223,11 +248,21 @@ export const sendChatbotMessage = async (req, res) => {
     }
 };
 
-// ======================================================
-//    SEND TOUR MESSAGE
-//    POST /api/chat/:bookingId
-//    Auth: Required (Tourist or Assigned Guide)
-//    ====================================================== */
+/**
+ * Sends a message within a tour booking chat room.
+ * Ensures the chat is authorized and the sender has permission for the booking.
+ * 
+ * @async
+ * @function sendTourMessage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.message - Content of the message.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the newly created message.
+ */
 export const sendTourMessage = async (req, res) => {
     const { bookingId } = req.params;
     const { message } = req.body;
@@ -325,11 +360,21 @@ export const sendTourMessage = async (req, res) => {
     }
 };
 
-// ======================================================
-//    AUTHORIZE/REVOKE TOUR CHAT
-//    PATCH /api/chat/:bookingId/authorize
-//    Auth: Required (Admin only)
-//    ====================================================== */
+/**
+ * Authorizes or revokes chat access for a specific booking.
+ * Inserts a system message to notify participants of the status change.
+ * 
+ * @async
+ * @function authorizeChat
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.bookingId - ID of the booking.
+ * @param {Object} req.body - Request body.
+ * @param {boolean} req.body.is_authorized - New authorization status.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming status update.
+ */
 export const authorizeChat = async (req, res) => {
     const { bookingId } = req.params;
     const { is_authorized } = req.body;

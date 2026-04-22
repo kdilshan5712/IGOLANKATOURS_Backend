@@ -1,3 +1,10 @@
+/**
+ * Payment Internal & Stripe Integration Routes
+ * Path: /api/payments
+ * 
+ * Orchestrates the financial workflow, including payment intent creation, 
+ * confirmation, refunds, and handling Stripe webhooks for asynchronous status updates.
+ */
 import express from 'express';
 import {
     createPaymentIntent,

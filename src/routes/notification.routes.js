@@ -1,3 +1,10 @@
+/**
+ * User Notification Management Routes
+ * Path: /api/notifications
+ * 
+ * Provides endpoints for retrieving and managing user alerts, 
+ * including unread counts and status updates (marking as read/delete).
+ */
 import express from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
 import {

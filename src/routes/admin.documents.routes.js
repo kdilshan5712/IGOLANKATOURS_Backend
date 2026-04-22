@@ -1,3 +1,9 @@
+/**
+ * Admin Document Verification Routes
+ * Path: /api/admin/documents
+ * 
+ * Manages the verification workflow for tour guide identity and licensing documents.
+ */
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {

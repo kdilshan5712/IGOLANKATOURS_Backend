@@ -1,15 +1,24 @@
 import db from "../config/db.js";
 
 /**
- * Records an administrative action to the audit logs
+ * Audit Logger Utility
+ * Handles the recording of administrative actions for security tracking and accountability.
+ */
+
+/**
+ * Records a detailed administrative action into the audit_logs table.
+ * Extracts administrative metadata from the request object and persists the transformation details.
  * 
- * @param {Object} req - Express request object (to extract admin_id and ip)
- * @param {Object} params - Log parameters
- * @param {string} params.actionType - Type of action (e.g., 'UPDATE_BOOKING_STATUS')
- * @param {string} params.targetType - Type of target (e.g., 'BOOKING')
- * @param {string} params.targetId - ID of the target resource
- * @param {Object} [params.changes] - JSON object containing old/new values
- * @param {string} [params.description] - Human readable description
+ * @async
+ * @function recordAuditLog
+ * @param {Object} req - Express request object used to extract admin_id and IP address.
+ * @param {Object} params - The data parameters for the audit log.
+ * @param {string} params.actionType - The category of action performed (e.g., 'UPDATE_BOOKING_STATUS').
+ * @param {string} params.targetType - The type of entity affected by the action (e.g., 'BOOKING').
+ * @param {string} params.targetId - The specific ID of the resource being modified.
+ * @param {Object} [params.changes] - An optional object describing the specific data changes (old vs new).
+ * @param {string} [params.description] - A human-readable description of the action.
+ * @returns {Promise<void>} Resolves when the log is recorded. Does not throw errors to prevent blocking the main request flow.
  */
 export const recordAuditLog = async (req, params) => {
   try {

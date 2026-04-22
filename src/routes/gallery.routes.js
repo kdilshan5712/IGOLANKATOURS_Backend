@@ -1,3 +1,10 @@
+/**
+ * Public Gallery Informational Routes
+ * Path: /api/gallery
+ * 
+ * Provides public endpoints for retrieving curated gallery images, 
+ * image categories, and general gallery statistics.
+ */
 import express from 'express';
 import {
     getAllGalleryImages,

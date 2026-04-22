@@ -1,12 +1,17 @@
-import { body } from 'express-validator';
-
 /**
- * Authentication Validation Schemas
+ * Identity & Access Management Validation Schemas
+ * 
+ * Defines strict express-validator rules for sensitive identity operations, 
+ * including robust password complexity requirements, email normalization, 
+ * and geographic attribute validation.
+ * 
+ * @namespace authSchemas
  */
 export const authSchemas = {
   /**
    * Validation for Registration
    */
+  // @VALIDATION_RULE: User Registration
   register: [
     body('email')
       .trim()
@@ -56,6 +61,7 @@ export const authSchemas = {
   /**
    * Validation for Login
    */
+  // @VALIDATION_RULE: User Login
   login: [
     body('email')
       .trim()
@@ -68,6 +74,7 @@ export const authSchemas = {
   /**
    * Validation for Password Reset
    */
+  // @VALIDATION_RULE: Password Reset
   resetPassword: [
     body('token')
       .notEmpty().withMessage('Reset token is required'),

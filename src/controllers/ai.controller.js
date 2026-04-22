@@ -6,9 +6,17 @@ import db from '../config/db.js';
  */
 
 /**
- * 1️⃣ PUBLIC: SAVE CHATBOT SESSION
- * POST /api/ai/session
- * Body: { tourist_id, preferences, recommendations }
+ * Saves a new chatbot session with tourist preferences and AI recommendations.
+ * 
+ * @async
+ * @function saveChatbotSession
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Session details.
+ * @param {string} [req.body.tourist_id] - ID of the tourist (if logged in).
+ * @param {Object} [req.body.preferences] - Tourist preferences object.
+ * @param {Object} [req.body.recommendations] - AI-generated recommendations.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the saved session info.
  */
 export const saveChatbotSession = async (req, res) => {
   try {
@@ -41,6 +49,30 @@ export const saveChatbotSession = async (req, res) => {
   }
 };
 
+/**
+ * Submits a detailed custom tour request generated via the AI chatbot for administrator approval.
+ * Includes automatic profile recovery if the tourist record is missing.
+ * 
+ * @async
+ * @function submitCustomTourRequest
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Custom tour parameters.
+ * @param {string} [req.body.tourist_id] - ID of the tourist.
+ * @param {string} req.body.title - Proposed title for the tour.
+ * @param {number} req.body.duration_days - Duration of the planned tour.
+ * @param {string} [req.body.travel_month] - Planned month of travel.
+ * @param {number} req.body.traveler_count - Number of travelers.
+ * @param {string} [req.body.hotel_preference] - Type of hotel preferred.
+ * @param {number} [req.body.estimated_price_min] - Minimum budget.
+ * @param {number} [req.body.estimated_price_max] - Maximum budget.
+ * @param {Object|string} [req.body.recommendations] - AI itinerary recommendations.
+ * @param {string} [req.body.tourist_name] - Name of the guest.
+ * @param {string} [req.body.tourist_email] - Contact email.
+ * @param {string} [req.body.tourist_phone] - Contact phone.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming submission for approval.
+ */
 export const submitCustomTourRequest = async (req, res) => {
   try {
     console.log("📥 [AI] Custom tour request received:", JSON.stringify(req.body, null, 2));
@@ -139,8 +171,21 @@ export const submitCustomTourRequest = async (req, res) => {
 };
 
 /**
- * 3️⃣ PUBLIC: SYNC AI CHAT HISTORY
- * POST /api/ai/sync-history
+ * Synchronizes the AI chat history by persisting messages between the user and assistant
+ * to the database for future reference.
+ * 
+ * @async
+ * @function syncChatHistory
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Synchronization payload.
+ * @param {string} req.body.sessionId - UUID of the chatbot session.
+ * @param {Array<Object>} req.body.messages - Array of message objects to sync.
+ * @param {string} req.body.messages[].sender - Role of the sender ('user', 'assistant', 'system').
+ * @param {string} req.body.messages[].text - Content of the message.
+ * @param {string} [req.body.messages[].timestamp] - Optional ISO timestamp of the message.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming history synchronization.
  */
 export const syncChatHistory = async (req, res) => {
   try {

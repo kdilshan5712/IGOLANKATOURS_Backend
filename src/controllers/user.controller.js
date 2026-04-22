@@ -2,9 +2,15 @@ import db from "../config/db.js";
 import supabase from "../config/supabase.js";
 
 /**
- * GET USER PROFILE
- * GET /api/user/me
- * Auth: Required (Tourist only)
+ * Retrieves the complete profile for the authenticated tourist user.
+ * Merges data from 'users' and 'tourist' tables and splits names for frontend compatibility.
+ * 
+ * @async
+ * @function getUserProfile
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the user's profile data.
  */
 export const getUserProfile = async (req, res) => {
   const user_id = req.user.user_id;
@@ -58,9 +64,14 @@ export const getUserProfile = async (req, res) => {
 };
 
 /**
- * GET USER BOOKINGS
- * GET /api/user/bookings
- * Auth: Required (Tourist only)
+ * Retrieves all tour bookings associated with the authenticated tourist user.
+ * 
+ * @async
+ * @function getUserBookings
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of user bookings.
  */
 export const getUserBookings = async (req, res) => {
   const user_id = req.user.user_id;
@@ -110,9 +121,14 @@ export const getUserBookings = async (req, res) => {
 };
 
 /**
- * GET USER CUSTOM TOURS
- * GET /api/user/custom-tours
- * Auth: Required (Tourist only)
+ * Retrieves all custom tour sessions (chatbot sessions) for the authenticated tourist user.
+ * 
+ * @async
+ * @function getUserCustomTours
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of custom tour sessions.
  */
 export const getUserCustomTours = async (req, res) => {
   const user_id = req.user.user_id;
@@ -141,9 +157,16 @@ export const getUserCustomTours = async (req, res) => {
 };
 
 /**
- * UPLOAD PROFILE PHOTO
- * POST /api/user/profile-photo
- * Auth: Required (Tourist only)
+ * Uploads and updates the profile photo for the authenticated tourist user.
+ * Stores the photo in Supabase Storage and cleans up older photo records.
+ * 
+ * @async
+ * @function uploadProfilePhoto
+ * @param {Object} req - Express request object.
+ * @param {Object} req.file - The image file to upload (via multer).
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the new profile photo URL.
  */
 export const uploadProfilePhoto = async (req, res) => {
   try {
@@ -219,9 +242,15 @@ export const uploadProfilePhoto = async (req, res) => {
 };
 
 /**
- * DELETE PROFILE PHOTO
- * DELETE /api/user/profile-photo
- * Auth: Required (Tourist only)
+ * Deletes the profile photo for the authenticated tourist user.
+ * Removes the file from Supabase Storage and clears the database record.
+ * 
+ * @async
+ * @function deleteProfilePhoto
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming photo deletion.
  */
 export const deleteProfilePhoto = async (req, res) => {
   try {

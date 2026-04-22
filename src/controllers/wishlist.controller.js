@@ -1,9 +1,14 @@
 import db from '../config/db.js';
 
 /**
- * GET USER WISHLIST
- * GET /api/wishlist
- * Auth: Required (Tourist only)
+ * Retrieves the IDs of all tour packages in the authenticated tourist's wishlist.
+ * 
+ * @async
+ * @function getUserWishlist
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of wishlisted package IDs.
  */
 export const getUserWishlist = async (req, res) => {
     const user_id = req.user.user_id;
@@ -31,10 +36,17 @@ export const getUserWishlist = async (req, res) => {
 };
 
 /**
- * TOGGLE WISHLIST ITEM
- * POST /api/wishlist/toggle
- * Body: { package_id }
- * Auth: Required (Tourist only)
+ * Toggles a tour package in the user's wishlist (adds if missing, removes if present).
+ * Validates the existence of the package before performing the toggle operation.
+ * 
+ * @async
+ * @function toggleWishlistItem
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Metadata.
+ * @param {string} req.body.package_id - UUID of the package to toggle.
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response indicating the action taken ('added' or 'removed').
  */
 export const toggleWishlistItem = async (req, res) => {
     const user_id = req.user.user_id;

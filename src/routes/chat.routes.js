@@ -1,3 +1,10 @@
+/**
+ * Communication & Chat Routes
+ * Path: /api/chat
+ * 
+ * Facilitates real-time communication between tourists and guides for active tours, 
+ * as well as archived session-based chat data.
+ */
 import express from "express";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { getTourMessages, sendTourMessage, authorizeChat, getChatbotMessages, sendChatbotMessage } from "../controllers/chat.controller.js";

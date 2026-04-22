@@ -13,10 +13,15 @@ import {
 } from '../utils/supabaseUpload.js';
 
 /**
- * 1️⃣ PUBLIC: GET REVIEWS FOR PACKAGE
- * Returns only approved reviews for a specific package
- * Includes images if available
- * GET /api/reviews/package/:packageId
+ * Retrieves all approved reviews for a specific tour package.
+ * 
+ * @async
+ * @function getApprovedReviewsByPackage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.packageId - UUID of the package.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of approved reviews for the package.
  */
 export const getApprovedReviewsByPackage = async (req, res) => {
   try {
@@ -67,10 +72,16 @@ export const getApprovedReviewsByPackage = async (req, res) => {
 };
 
 /**
- * 2️⃣ PUBLIC: GET ALL APPROVED REVIEWS
- * Returns all approved reviews across all packages
- * Includes images for gallery integration
- * GET /api/reviews
+ * Retrieves all approved reviews across all packages, with support for pagination.
+ * 
+ * @async
+ * @function getAllApprovedReviews
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {number} [req.query.limit=100] - Max number of reviews to return.
+ * @param {number} [req.query.offset=0] - Pagination offset.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of all approved reviews.
  */
 export const getAllApprovedReviews = async (req, res) => {
   try {
@@ -113,10 +124,17 @@ export const getAllApprovedReviews = async (req, res) => {
 };
 
 /**
- * 2️⃣B PUBLIC: GET REVIEWS WITH IMAGES FOR GALLERY
- * Returns only approved reviews that have images
- * Used by Gallery page to display review photos
- * GET /api/reviews/gallery
+ * Retrieves approved reviews that contain images, formatted for a gallery display.
+ * Flattens the image arrays into individual gallery items.
+ * 
+ * @async
+ * @function getReviewsForGallery
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {number} [req.query.limit=50] - Max number of reviews to fetch.
+ * @param {number} [req.query.offset=0] - Pagination offset.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with flattened gallery items.
  */
 export const getReviewsForGallery = async (req, res) => {
   try {
@@ -183,9 +201,22 @@ export const getReviewsForGallery = async (req, res) => {
 };
 
 /**
- * 3️⃣ PROTECTED: SUBMIT REVIEW (Package Only)
- * Only authenticated tourists can submit reviews for packages they've booked
- * POST /api/reviews
+ * Submits a new review for a tour package.
+ * Validates that the user has a confirmed booking for the package and hasn't reviewed it yet.
+ * Supports multiple image uploads to Supabase Storage.
+ * 
+ * @async
+ * @function submitReview
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Review details.
+ * @param {string} req.body.packageId - UUID of the package.
+ * @param {number} req.body.rating - Numeric rating (1-5).
+ * @param {string} [req.body.title] - Short title for the review.
+ * @param {string} req.body.comment - Detailed review text.
+ * @param {Object[]} [req.files] - Uploaded image files (via multer).
+ * @param {Object} req.user - Authenticated user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming submission and pending status.
  */
 export const submitReview = async (req, res) => {
   try {
@@ -277,9 +308,17 @@ export const submitReview = async (req, res) => {
 };
 
 /**
- * 4️⃣ ADMIN: GET ALL REVIEWS (WITH FILTERS)
- * Includes images for moderation
- * GET /api/admin/reviews?status=pending&limit=10&offset=0
+ * Retrieves all reviews for administrative moderation, with status filtering and pagination.
+ * 
+ * @async
+ * @function getAllReviewsAdmin
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.status='pending'] - Filter by status ('pending', 'approved', 'rejected', 'all').
+ * @param {number} [req.query.limit=50] - Max number of records.
+ * @param {number} [req.query.offset=0] - Pagination offset.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of reviews and status counts.
  */
 export const getAllReviewsAdmin = async (req, res) => {
   try {
@@ -351,8 +390,17 @@ export const getAllReviewsAdmin = async (req, res) => {
 };
 
 /**
- * 5️⃣ ADMIN: APPROVE REVIEW
- * PATCH /api/admin/reviews/:reviewId/approve
+ * Approves a pending review, making it visible to the public.
+ * Notifies the reviewer via email upon approval.
+ * 
+ * @async
+ * @function approveReview
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.reviewId - UUID of the review to approve.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming approval.
  */
 export const approveReview = async (req, res) => {
   try {
@@ -420,9 +468,18 @@ export const approveReview = async (req, res) => {
 };
 
 /**
- * 6️⃣ ADMIN: REJECT REVIEW
- * PATCH /api/admin/reviews/:reviewId/reject
- * Body: { reason }
+ * Rejects a submitted review and optionally notifies the user with a reason.
+ * 
+ * @async
+ * @function rejectReview
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.reviewId - UUID of the review to reject.
+ * @param {Object} req.body - Metadata.
+ * @param {string} [req.body.reason] - Explanation for rejection sent to user.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming rejection.
  */
 export const rejectReview = async (req, res) => {
   try {
@@ -491,9 +548,15 @@ export const rejectReview = async (req, res) => {
 };
 
 /**
- * 7️⃣ ADMIN: DELETE REVIEW
- * Permanently deletes review and associated images from Supabase Storage
- * DELETE /api/admin/reviews/:reviewId
+ * Permanently deletes a review record and its associated images from Supabase Storage.
+ * 
+ * @async
+ * @function deleteReview
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.reviewId - UUID of the review to delete.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
  */
 export const deleteReview = async (req, res) => {
   try {

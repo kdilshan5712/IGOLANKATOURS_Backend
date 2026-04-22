@@ -10,7 +10,9 @@ const TEXT_COLOR = '#334155';      // Slate Gray
 const LOGO_URL = 'https://exfyprnpkplhzuuloebf.supabase.co/storage/v1/object/public/tour-images/tour-images/Logo.jpg';
 
 /**
- * Premium Email Header
+ * Premium email header HTML snippet, featuring the brand logo and name.
+ * 
+ * @type {string}
  */
 export const emailHeader = `
   <div style="background: linear-gradient(135deg, ${BRAND_COLOR} 0%, #172554 100%); padding: 60px 30px; text-align: center; border-bottom: 5px solid ${ACCENT_COLOR};">
@@ -23,7 +25,9 @@ export const emailHeader = `
 `;
 
 /**
- * Premium Email Footer
+ * Premium email footer HTML snippet, featuring contact info and social links.
+ * 
+ * @type {string}
  */
 export const emailFooter = `
   <div style="background: #0f172a; padding: 60px 40px; text-align: center; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.05);">
@@ -48,7 +52,11 @@ export const emailFooter = `
 `;
 
 /**
- * Premium Email Wrapper
+ * Wraps dynamic content within the global email structure (HTML, Head, Body).
+ * 
+ * @function emailWrapper
+ * @param {string} content - The dynamic HTML content to wrap.
+ * @returns {string} Fully formatted HTML document string.
  */
 export const emailWrapper = (content) => `
 <!DOCTYPE html>
@@ -89,9 +97,21 @@ const button = (text, link, color = BRAND_COLOR) => `
   </div>
 `;
 
+/**
+ * A collection of methods that generate structured email objects (subject and HTML) 
+ * for various transactional events.
+ * 
+ * @namespace emailTemplates
+ */
 export const emailTemplates = {
     /**
-     * Email Verification
+     * Generates a verification email for new account registrations.
+     * 
+     * @function emailVerification
+     * @memberof emailTemplates
+     * @param {string} fullName - Recipient's full name.
+     * @param {string} verificationLink - Secure URL for email confirmation.
+     * @returns {Object} Email object with subject and html.
      */
     emailVerification: (fullName, verificationLink) => ({
       subject: "Verify Your Email - I GO LANKA TOURS ✉️",
@@ -116,7 +136,13 @@ export const emailTemplates = {
     }),
 
     /**
-     * Registration Successful / Welcome
+     * Generates a welcome email for successful registrations.
+     * 
+     * @function welcome
+     * @memberof emailTemplates
+     * @param {string} userName - User's name.
+     * @param {string} loginLink - Link to the login page.
+     * @returns {Object} Email object with subject and html.
      */
     welcome: (userName, loginLink) => ({
       subject: "Welcome to I Go Lanka Tours! 🌴",
@@ -142,7 +168,13 @@ export const emailTemplates = {
     }),
 
     /**
-     * Password Reset
+     * Generates a password reset notification.
+     * 
+     * @function passwordReset
+     * @memberof emailTemplates
+     * @param {string} fullName - Recipient's full name.
+     * @param {string} resetLink - Secure URL for password update.
+     * @returns {Object} Email object with subject and html.
      */
     passwordReset: (fullName, resetLink) => ({
       subject: "Reset Your Password - I GO LANKA TOURS 🔐",
@@ -163,7 +195,14 @@ export const emailTemplates = {
     }),
 
     /**
-     * Booking Confirmed
+     * Generates a booking confirmation for tourists.
+     * 
+     * @function bookingConfirmed
+     * @memberof emailTemplates
+     * @param {string} userName - Tourist's name.
+     * @param {string} packageName - Name of the booked package.
+     * @param {Object} bookingDetails - Specific details like date and travelers.
+     * @returns {Object} Email object with subject and html.
      */
     bookingConfirmed: (userName, packageName, bookingDetails) => ({
       subject: `🎉 Booking Confirmed - ${packageName}`,
@@ -189,7 +228,14 @@ export const emailTemplates = {
     }),
 
     /**
-     * Booking Cancelled
+     * Generates a booking cancellation notification.
+     * 
+     * @function bookingCancelled
+     * @memberof emailTemplates
+     * @param {string} userName - Tourist's name.
+     * @param {string} packageName - Name of the package.
+     * @param {Object} refundDetails - Details about the refund amount and status.
+     * @returns {Object} Email object with subject and html.
      */
     bookingCancelled: (userName, packageName, refundDetails) => ({
         subject: `Booking Cancellation Confirmed - ${packageName}`,
@@ -209,7 +255,15 @@ export const emailTemplates = {
     }),
 
     /**
-     * Guide Assigned
+     * Generates a notification for tourists when a guide is assigned.
+     * 
+     * @function guideAssigned
+     * @memberof emailTemplates
+     * @param {string} userName - Tourist's name.
+     * @param {string} guideName - Assigned guide's name.
+     * @param {string} packageName - Package name.
+     * @param {string|Date} tourDate - Tour start date.
+     * @returns {Object} Email object with subject and html.
      */
     guideAssigned: (userName, guideName, packageName, tourDate) => ({
         subject: '📅 Guide Assigned to Your Tour',
@@ -232,7 +286,12 @@ export const emailTemplates = {
     }),
 
     /**
-     * Guide Registration Received
+     * Generates an acknowledgement email for new guide applications.
+     * 
+     * @function guideRegistration
+     * @memberof emailTemplates
+     * @param {string} fullName - Applicant's full name.
+     * @returns {Object} Email object with subject and html.
      */
     guideRegistration: (fullName) => ({
       subject: "Guide Registration Received - I GO LANKA TOURS 📋",
@@ -256,7 +315,17 @@ export const emailTemplates = {
     }),
 
     /**
-     * Guide Assignment (Notification to Guide)
+     * Generates a notification for guides when assigned a new tour.
+     * 
+     * @function guideAssignment
+     * @memberof emailTemplates
+     * @param {string} guideName - Guide's name.
+     * @param {string} touristName - Primary tourist's name.
+     * @param {string} packageName - Tour package name.
+     * @param {string|Date} startDate - Start date.
+     * @param {string|Date} endDate - End date.
+     * @param {string} [adminNotes] - Special instructions from admin.
+     * @returns {Object} Email object with subject and html.
      */
     guideAssignment: (guideName, touristName, packageName, startDate, endDate, adminNotes) => ({
       subject: `🎯 New Tour Assignment: ${packageName}`,
@@ -322,7 +391,12 @@ export const emailTemplates = {
     }),
 
     /**
-     * Review Submitted Confirmation
+     * Generates a confirmation for a submitted review.
+     * 
+     * @function reviewSubmitted
+     * @memberof emailTemplates
+     * @param {string} userName - Reviewer's name.
+     * @returns {Object} Email object with subject and html.
      */
     reviewSubmitted: (userName) => ({
       subject: "Thank You for Your Review! ⭐",
@@ -341,7 +415,12 @@ export const emailTemplates = {
     }),
 
     /**
-     * Review Approved Notification
+     * Generates a notification when a review goes live.
+     * 
+     * @function reviewApproved
+     * @memberof emailTemplates
+     * @param {string} userName - Reviewer's name.
+     * @returns {Object} Email object with subject and html.
      */
     reviewApproved: (userName) => ({
       subject: "Your Review is Now Live! 🎉",
@@ -355,7 +434,13 @@ export const emailTemplates = {
     }),
 
     /**
-     * Review Rejected Notification
+     * Generates a notification when a review is rejected.
+     * 
+     * @function reviewRejected
+     * @memberof emailTemplates
+     * @param {string} userName - Reviewer's name.
+     * @param {string} reason - Rejection reason.
+     * @returns {Object} Email object with subject and html.
      */
     reviewRejected: (userName, reason) => ({
       subject: "Update Regarding Your Review",
@@ -374,7 +459,12 @@ export const emailTemplates = {
     }),
 
     /**
-     * Guide Approved Notification
+     * Generates a notification for approved guides.
+     * 
+     * @function guideApproved
+     * @memberof emailTemplates
+     * @param {string} userName - Guide's name.
+     * @returns {Object} Email object with subject and html.
      */
     guideApproved: (userName) => ({
       subject: "🎉 Congratulations! Your Guide Account is Approved!",
@@ -397,7 +487,13 @@ export const emailTemplates = {
     }),
 
     /**
-     * Guide Rejected Notification
+     * Generates a notification for rejected guide applications.
+     * 
+     * @function guideRejected
+     * @memberof emailTemplates
+     * @param {string} userName - Applicant's name.
+     * @param {string} reason - Rejection reason.
+     * @returns {Object} Email object with subject and html.
      */
     guideRejected: (userName, reason) => ({
       subject: "Guide Application Update - Action Required",
@@ -417,7 +513,13 @@ export const emailTemplates = {
     }),
 
     /**
-     * Guide Document Upload Confirmation
+     * Generates a confirmation for guide document uploads.
+     * 
+     * @function guideDocumentUpload
+     * @memberof emailTemplates
+     * @param {string} fullName - Guide's name.
+     * @param {string} documentType - Type of document uploaded.
+     * @returns {Object} Email object with subject and html.
      */
     guideDocumentUpload: (fullName, documentType) => ({
       subject: `Document Received: ${documentType.charAt(0).toUpperCase() + documentType.slice(1)} - I GO LANKA TOURS`,
@@ -433,7 +535,59 @@ export const emailTemplates = {
         <p style="font-size: 16px; line-height: 1.8;">You'll receive another notification once it has been verified. Thank you for your patience!</p>
         ${button('Check Profile Status', `${process.env.FRONTEND_URL}/guide/profile`, SECONDARY_COLOR)}
       `)
+    }),
+
+    /**
+     * Contact Form - User Confirmation
+     */
+    contactConfirmation: (name) => emailWrapper(`
+      <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Message Received! 👋</h2>
+      <p style="font-size: 17px; line-height: 1.8;">Hello ${name},</p>
+      <p style="font-size: 17px; line-height: 1.8;">Thank you for reaching out to <strong>I GO LANKA TOURS</strong>. We've received your message and one of our travel experts will respond within <strong>24 hours</strong>.</p>
+      
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 25px; margin: 30px 0; border-radius: 12px; text-align: center;">
+        <p style="margin: 0; color: ${BRAND_COLOR}; font-weight: 600; font-size: 16px;">In the meantime, explore our latest packages!</p>
+      </div>
+      
+      ${button('Browse Tour Packages', `${process.env.FRONTEND_URL || 'https://www.igolankatours.com'}/packages`, SECONDARY_COLOR)}
+    `),
+
+    /**
+     * Contact Form - Admin Notification
+     */
+    newContactMessage: (name, email, subject, message) => emailWrapper(`
+      <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">🚨 New Contact Inquiry</h2>
+      <div style="background: #f1f5f9; padding: 25px; border-radius: 12px; margin: 20px 0;">
+        <p style="margin: 10px 0;"><strong>From:</strong> ${name}</p>
+        <p style="margin: 10px 0;"><strong>Email:</strong> ${email}</p>
+        <p style="margin: 10px 0;"><strong>Subject:</strong> ${subject}</p>
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0 0 10px 0;"><strong>Message:</strong></p>
+          <p style="font-style: italic; color: #475569; background: white; padding: 15px; border-radius: 8px;">${message}</p>
+        </div>
+      </div>
+      ${button('Reply to Customer', `mailto:${email}`, '#dc2626')}
+    `),
+
+    /**
+     * Contact Form - Admin Reply to User
+     */
+    contactReply: (name, replyMessage, originalSubject) => ({
+      subject: `Re: ${originalSubject} - I GO LANKA TOURS`,
+      html: emailWrapper(`
+        <h2 style="color: #0f172a; margin: 0 0 25px 0; font-size: 28px; font-weight: 700;">Reply from I GO LANKA TOURS ✉️</h2>
+        <p style="font-size: 17px; line-height: 1.8;">Hello ${name},</p>
+        <p style="font-size: 17px; line-height: 1.8;">Thank you for your patience. Here is our response to your inquiry regarding <strong>"${originalSubject}"</strong>:</p>
+        
+        <div style="background: #f0f9ff; border-left: 5px solid #3b82f6; padding: 25px; margin: 30px 0; border-radius: 12px;">
+          <p style="margin: 0; font-size: 16px; line-height: 1.8; color: #1e40af;">${replyMessage}</p>
+        </div>
+        
+        <p style="font-size: 16px; line-height: 1.8;">If you have any further questions, please don't hesitate to contact us. We're here to help!</p>
+        ${button('Visit Our Website', `${process.env.FRONTEND_URL || 'https://www.igolankatours.com'}`, SECONDARY_COLOR)}
+      `)
     })
 };
 
 export default emailTemplates;
+

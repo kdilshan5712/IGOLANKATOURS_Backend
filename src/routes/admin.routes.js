@@ -1,3 +1,13 @@
+/**
+ * Master Administrative Routes
+ * Path: /api/admin
+ * 
+ * This file serves as the primary router for the administrative backend. 
+ * It consolidates access to various functional areas including user management, 
+ * package creation, pricing rules, guide verification, and revenue analytics.
+ * 
+ * All routes defined here are protected by both authentication and admin-only authorization.
+ */
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import { getAllDestinations, createDestination, updateDestination, deleteDestination } from "../controllers/destinations.controller.js";
@@ -44,12 +54,10 @@ import {
 } from "../controllers/admin.pricing.controller.js";
 import { updateGuideCommission } from "../controllers/admin.guide.controller.js";
 import { getAdminFaqs, createFaq, updateFaq, deleteFaq } from "../controllers/faq.controller.js";
-import {
-   getAllCoupons,
-   createCoupon,
-   updateCoupon,
-   deleteCoupon
+    deleteCoupon
 } from "../controllers/admin.coupon.controller.js";
+import { managementSchemas } from "../schemas/admin.management.schema.js";
+import { validate } from "../middleware/validation.middleware.js";
 
 
 const router = express.Router();
@@ -144,8 +152,8 @@ router.patch("/guides/:guideId/commission", updateGuideCommission);
     PRICING RULES MANAGEMENT
     ====================================================== */
 router.get("/pricing-rules", getAllRules);
-router.post("/pricing-rules", createRule);
-router.put("/pricing-rules/:id", updateRule);
+router.post("/pricing-rules", managementSchemas.pricing.create, validate, createRule);
+router.put("/pricing-rules/:id", managementSchemas.pricing.update, validate, updateRule);
 router.delete("/pricing-rules/:id", deleteRule);
 
 /* ======================================================
@@ -158,24 +166,24 @@ router.patch("/payouts/:id/status", updatePayoutStatus);
     DESTINATIONS MANAGEMENT
     ====================================================== */
 router.get("/destinations", getAllDestinations);
-router.post("/destinations", createDestination);
-router.put("/destinations/:id", updateDestination);
+router.post("/destinations", managementSchemas.destinations.create, validate, createDestination);
+router.put("/destinations/:id", managementSchemas.destinations.update, validate, updateDestination);
 router.delete("/destinations/:id", deleteDestination);
 
 /* ======================================================
     FAQS MANAGEMENT
     ====================================================== */
 router.get("/faqs", getAdminFaqs);
-router.post("/faqs", createFaq);
-router.put("/faqs/:id", updateFaq);
+router.post("/faqs", managementSchemas.faqs.create, validate, createFaq);
+router.put("/faqs/:id", managementSchemas.faqs.update, validate, updateFaq);
 router.delete("/faqs/:id", deleteFaq);
 
 /* ======================================================
     COUPONS MANAGEMENT
     ====================================================== */
 router.get("/coupons", getAllCoupons);
-router.post("/coupons", createCoupon);
-router.put("/coupons/:id", updateCoupon);
+router.post("/coupons", managementSchemas.coupons.create, validate, createCoupon);
+router.put("/coupons/:id", managementSchemas.coupons.create, validate, updateCoupon); // Reuse create for full update or create partial update schema
 router.delete("/coupons/:id", deleteCoupon);
 
 

@@ -5,11 +5,14 @@ import path from 'path';
 
 /**
  * Report Generator Service
- * Handles PDF and CSV report generation for admin dashboard
+ * Provides utilities for generating administrative and transactional reports in PDF and CSV formats.
  */
 
 /**
- * Reusable Branding Helper for PDF Documents
+ * Internal helper to draw the company logo and header/footer branding on every page of a PDF document.
+ * 
+ * @function drawBranding
+ * @param {Object} doc - The PDFKit document instance.
  */
 const drawBranding = (doc) => {
     const logoPath = path.join(process.cwd(), 'src', 'assets', 'Logo.jpg');
@@ -44,7 +47,13 @@ const drawBranding = (doc) => {
 };
 
 /**
- * Generate PDF Report for Bookings
+ * Generates a PDF master report for a collection of bookings and pipes it to the HTTP response.
+ * 
+ * @async
+ * @function generateBookingReportPDF
+ * @param {Array<Object>} bookings - List of booking objects to report.
+ * @param {Object} res - Express response object for streaming the file.
+ * @returns {Promise<void>}
  */
 export const generateBookingReportPDF = async (bookings, res) => {
     const doc = new PDFDocument({ margin: 50, bufferPages: true });
@@ -119,7 +128,13 @@ export const generateBookingReportPDF = async (bookings, res) => {
 
 
 /**
- * Generate CSV Report for Bookings
+ * Generates a CSV master report for a collection of bookings and sends it as a file download.
+ * 
+ * @async
+ * @function generateBookingReportCSV
+ * @param {Array<Object>} bookings - List of booking objects.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 export const generateBookingReportCSV = async (bookings, res) => {
     const csvStringifier = createObjectCsvStringifier({
@@ -153,7 +168,13 @@ export const generateBookingReportCSV = async (bookings, res) => {
 };
 
 /**
- * Generate CSV Report for Users
+ * Generates a CSV report containing user account data.
+ * 
+ * @async
+ * @function generateUserReportCSV
+ * @param {Array<Object>} users - List of user objects.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 export const generateUserReportCSV = async (users, res) => {
     const csvStringifier = createObjectCsvStringifier({
@@ -185,7 +206,14 @@ export const generateUserReportCSV = async (users, res) => {
 };
 
 /**
- * Generate PDF Invoice for a Single Booking
+ * Generates a professional PDF invoice for a single specific booking.
+ * Includes billing info, tour details, and payment summary.
+ * 
+ * @async
+ * @function generateBookingInvoicePDF
+ * @param {Object} booking - The specific booking object to invoice.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 export const generateBookingInvoicePDF = async (booking, res) => {
     const doc = new PDFDocument({ margin: 50, bufferPages: true });
@@ -280,7 +308,13 @@ export const generateBookingInvoicePDF = async (booking, res) => {
 };
 
 /**
- * Generate PDF Report for Revenue
+ * Generates a comprehensive PDF revenue report with analytics and package breakdowns.
+ * 
+ * @async
+ * @function generateRevenueReportPDF
+ * @param {Object} reportData - Object containing summary, by_status, and by_package data.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 export const generateRevenueReportPDF = async (reportData, res) => {
     const doc = new PDFDocument({ margin: 50, bufferPages: true });
@@ -401,7 +435,13 @@ export const generateRevenueReportPDF = async (reportData, res) => {
 };
 
 /**
- * Generate PDF Report for Audit Logs
+ * Generates a detailed PDF report of system audit and security logs in landscape orientation.
+ * 
+ * @async
+ * @function generateAuditLogReportPDF
+ * @param {Array<Object>} logs - List of audit log records.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 export const generateAuditLogReportPDF = async (logs, res) => {
     const doc = new PDFDocument({ margin: 50, bufferPages: true, layout: 'landscape' });
@@ -486,7 +526,13 @@ export const generateAuditLogReportPDF = async (logs, res) => {
 };
 
 /**
- * Generate CSV Report for Audit Logs
+ * Generates a CSV report of system audit logs.
+ * 
+ * @async
+ * @function generateAuditLogReportCSV
+ * @param {Array<Object>} logs - List of audit log records.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 export const generateAuditLogReportCSV = async (logs, res) => {
     const csvStringifier = createObjectCsvStringifier({
@@ -522,7 +568,13 @@ export const generateAuditLogReportCSV = async (logs, res) => {
 };
 
 /**
- * Generate CSV Report for Revenue
+ * Generates a CSV revenue report with summary and package breakdown.
+ * 
+ * @async
+ * @function generateRevenueReportCSV
+ * @param {Object} reportData - Object containing revenue analytics.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 export const generateRevenueReportCSV = async (reportData, res) => {
     // We'll create a multi-section CSV or just the package breakdown

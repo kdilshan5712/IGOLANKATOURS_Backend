@@ -2,10 +2,17 @@ import db from "../config/db.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 import { recordAuditLog } from "../utils/auditLogger.js";
 
-/* ======================================================
-   GET ALL PAYOUT REQUESTS
-   GET /api/admin/payouts
-   ====================================================== */
+/**
+ * Retrieves all payout requests with optional status filtering and aggregated status counts.
+ * 
+ * @async
+ * @function getAllPayoutRequests
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.status] - Optional status filter for payout requests.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with payout requests and status counts.
+ */
 export const getAllPayoutRequests = async (req, res) => {
   try {
     const { status } = req.query;
@@ -68,10 +75,23 @@ export const getAllPayoutRequests = async (req, res) => {
   }
 };
 
-/* ======================================================
-   UPDATE PAYOUT STATUS (Approve/Reject/Paid)
-   PATCH /api/admin/payouts/:id/status
-   ====================================================== */
+/**
+ * Updates the status of a payout request (approve, reject, or mark as paid)
+ * and records the action in the audit log.
+ * 
+ * @async
+ * @function updatePayoutStatus
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the payout request to update.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.status - New payout status ('approved', 'paid', 'rejected').
+ * @param {string} [req.body.admin_notes] - Optional internal notes from the admin.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {string} req.user.user_id - ID of the admin performing the update.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated payout request.
+ */
 export const updatePayoutStatus = async (req, res) => {
   try {
     const { id } = req.params;

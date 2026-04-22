@@ -1,18 +1,20 @@
 /**
  * SUPABASE STORAGE HELPER
- * Handles file uploads to Supabase Storage for reviews
+ * Handles file uploads to Supabase Storage for reviews.
  * Bucket: reviews
  * Folder structure: reviews/user-uploads/<user_id>/
  */
 
-import supabase from '../config/supabase.js';
-import crypto from 'crypto';
-
 /**
- * Upload review images to Supabase Storage
- * @param {Array} files - Array of files from multer (req.files)
- * @param {string} userId - User ID for folder structure
- * @returns {Promise<Array>} Array of public URLs
+ * Uploads multiple review images to Supabase Storage.
+ * Generates unique filenames for each upload and organizes them by user ID.
+ * 
+ * @async
+ * @function uploadReviewImages
+ * @param {Array<Object>} files - Array of file objects from multer.
+ * @param {string} userId - ID of the user performing the upload (used for folder organization).
+ * @returns {Promise<Array<string>>} A list of public URLs for the successfully uploaded images.
+ * @throws {Error} If any upload operation fails.
  */
 export const uploadReviewImages = async (files, userId) => {
   if (!files || files.length === 0) {
@@ -62,10 +64,14 @@ export const uploadReviewImages = async (files, userId) => {
 };
 
 /**
- * Delete review images from Supabase Storage
- * @param {Array} imageUrls - Array of image URLs to delete
- * @param {string} userId - User ID for folder path
- * @returns {Promise<boolean>}
+ * Deletes a list of review images from Supabase Storage based on their public URLs.
+ * Extracts the storage path from the URL before deletion.
+ * 
+ * @async
+ * @function deleteReviewImages
+ * @param {Array<string>} imageUrls - List of full public URLs to the images to be deleted.
+ * @param {string} userId - ID of the user who owns the images.
+ * @returns {Promise<boolean>} True if all deletions were successful or if the list was empty.
  */
 export const deleteReviewImages = async (imageUrls, userId) => {
   if (!imageUrls || imageUrls.length === 0) {
@@ -100,9 +106,11 @@ export const deleteReviewImages = async (imageUrls, userId) => {
 };
 
 /**
- * Validate image files
- * @param {Array} files - Array of files from multer
- * @returns {Object} { valid: boolean, error: string }
+ * Validates an array of uploaded files against constraints like count, size, and type.
+ * 
+ * @function validateReviewImages
+ * @param {Array<Object>} [files] - Array of file objects from multer.
+ * @returns {Object} Validation result { valid: boolean, error: string|undefined }.
  */
 export const validateReviewImages = (files) => {
   const MAX_FILES = 5;

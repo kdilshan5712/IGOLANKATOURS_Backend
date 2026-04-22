@@ -5,12 +5,27 @@ import { sendSMS, getShortMessage } from './smsService.js';
 
 /**
  * Notification Service
- * Handles all notification-related operations
- * Now includes email notifications
+ * Orchestrates multi-channel notifications including in-app alerts, emails, and SMS.
+ * 
+ * @namespace NotificationService
  */
 export const NotificationService = {
     /**
-     * Create a new notification (in-app + email)
+     * Creates a new notification record in the database and optionally triggers 
+     * secondary notifications via email and SMS based on the notification type.
+     * 
+     * @async
+     * @function create
+     * @memberof NotificationService
+     * @param {Object} params - Notification parameters.
+     * @param {string} params.userId - Recipient user ID.
+     * @param {string} params.type - The category of notification.
+     * @param {string} params.title - Short descriptive title.
+     * @param {string} params.message - Detailed notification text.
+     * @param {string} [params.link=null] - Optional URL for the user to visit.
+     * @param {boolean} [params.sendEmailNotif=true] - Whether to also send an email.
+     * @param {Object} [params.emailData={}] - Additional data for the email template.
+     * @returns {Promise<Object>} The created notification database record.
      */
     async create({ userId, type, title, message, link = null, sendEmailNotif = true, emailData = {} }) {
         try {
@@ -51,7 +66,16 @@ export const NotificationService = {
     },
 
     /**
-     * Send email notification based on type
+     * Dispatches an email notification to the specified user.
+     * Automatically fetches user contact details and selects the appropriate template.
+     * 
+     * @async
+     * @function sendEmailNotification
+     * @memberof NotificationService
+     * @param {string} userId - Recipient user ID.
+     * @param {string} type - Notification type for template selection.
+     * @param {Object} data - Dynamic data for the email template.
+     * @returns {Promise<boolean>} True if the email was successfully dispatched.
      */
     async sendEmailNotification(userId, type, data) {
         try {
@@ -88,7 +112,15 @@ export const NotificationService = {
     },
 
     /**
-     * Send SMS notification based on type
+     * Dispatches an SMS notification to the specified user.
+     * 
+     * @async
+     * @function sendSMSNotification
+     * @memberof NotificationService
+     * @param {string} userId - Recipient user ID.
+     * @param {string} type - Notification type for message generation.
+     * @param {Object} data - Dynamic data for the SMS message.
+     * @returns {Promise<boolean>} True if the SMS was successfully dispatched.
      */
     async sendSMSNotification(userId, type, data) {
         try {
@@ -124,7 +156,14 @@ export const NotificationService = {
     },
 
     /**
-     * Map notification types to email templates
+     * Maps internal notification types to branded email templates.
+     * 
+     * @function getEmailTemplate
+     * @memberof NotificationService
+     * @param {string} type - The notification type.
+     * @param {string} userName - Name of the user for personalization.
+     * @param {Object} data - Metadata for the template.
+     * @returns {Object|null} An object containing subject and html, or null.
      */
     getEmailTemplate(type, userName, data) {
         switch (type) {
@@ -200,7 +239,15 @@ export const NotificationService = {
     },
 
     /**
-     * Get user notifications with optional filtering
+     * Retrieves in-app notifications for a specific user with optional filtering.
+     * 
+     * @async
+     * @function getUserNotifications
+     * @memberof NotificationService
+     * @param {string} userId - Target user ID.
+     * @param {number} [limit=20] - Max number of notifications to return.
+     * @param {boolean} [unreadOnly=false] - Whether to only fetch unread notifications.
+     * @returns {Promise<Array<Object>>} A list of notification records.
      */
     async getUserNotifications(userId, limit = 20, unreadOnly = false) {
         try {
@@ -224,7 +271,13 @@ export const NotificationService = {
     },
 
     /**
-     * Get count of unread notifications
+     * Calculates the total number of unread notifications for a user.
+     * 
+     * @async
+     * @function getUnreadCount
+     * @memberof NotificationService
+     * @param {string} userId - Target user ID.
+     * @returns {Promise<number>} The count of unread notifications.
      */
     async getUnreadCount(userId) {
         try {
@@ -241,7 +294,14 @@ export const NotificationService = {
     },
 
     /**
-     * Mark a notification as read
+     * Updates the status of a specific notification to 'read'.
+     * 
+     * @async
+     * @function markAsRead
+     * @memberof NotificationService
+     * @param {string} notificationId - ID of the notification.
+     * @param {string} userId - User ID (for ownership verification).
+     * @returns {Promise<Object>} The updated notification record.
      */
     async markAsRead(notificationId, userId) {
         try {
@@ -260,7 +320,13 @@ export const NotificationService = {
     },
 
     /**
-     * Mark all notifications as read for a user
+     * Marks all unread notifications for a user as 'read'.
+     * 
+     * @async
+     * @function markAllAsRead
+     * @memberof NotificationService
+     * @param {string} userId - Target user ID.
+     * @returns {Promise<boolean>} True if the bulk update was successful.
      */
     async markAllAsRead(userId) {
         try {
@@ -278,7 +344,14 @@ export const NotificationService = {
     },
 
     /**
-     * Delete a notification
+     * Permanently removes a notification from the database.
+     * 
+     * @async
+     * @function delete
+     * @memberof NotificationService
+     * @param {string} notificationId - ID of the notification to remove.
+     * @param {string} userId - User ID (for ownership verification).
+     * @returns {Promise<boolean>} True if deletion was successful.
      */
     async delete(notificationId, userId) {
         try {
@@ -295,7 +368,15 @@ export const NotificationService = {
     },
 
     /**
-     * Helper: Notify on booking creation
+     * High-level helper to notify a tourist of a new booking confirmation.
+     * 
+     * @async
+     * @function notifyBookingCreated
+     * @memberof NotificationService
+     * @param {string} touristId - ID of the tourist.
+     * @param {string} packageName - Name of the package.
+     * @param {string} bookingId - Reference ID for the booking.
+     * @returns {Promise<void>}
      */
     async notifyBookingCreated(touristId, packageName, bookingId) {
         await this.create({
@@ -309,7 +390,15 @@ export const NotificationService = {
     },
 
     /**
-     * Helper: Notify on guide assignment
+     * High-level helper to notify a guide of a new tour assignment.
+     * 
+     * @async
+     * @function notifyGuideAssignment
+     * @memberof NotificationService
+     * @param {string} guideId - ID of the guide user.
+     * @param {string} packageName - Name of the tour package.
+     * @param {string|Date} tourDate - The date of the tour.
+     * @returns {Promise<void>}
      */
     async notifyGuideAssignment(guideId, packageName, tourDate) {
         await this.create({
@@ -323,7 +412,15 @@ export const NotificationService = {
     },
 
     /**
-     * Helper: Notify on status change
+     * High-level helper to notify a user of a status change in their booking.
+     * 
+     * @async
+     * @function notifyStatusChange
+     * @memberof NotificationService
+     * @param {string} userId - Target user ID.
+     * @param {string} status - The new status label.
+     * @param {string} bookingId - ID of the associated booking.
+     * @returns {Promise<void>}
      */
     async notifyStatusChange(userId, status, bookingId) {
         await this.create({
@@ -336,7 +433,13 @@ export const NotificationService = {
     },
 
     /**
-     * Helper: Notify guide approval
+     * High-level helper to notify a guide applicant of their successful approval.
+     * 
+     * @async
+     * @function notifyGuideApproved
+     * @memberof NotificationService
+     * @param {string} guideId - ID of the approved guide.
+     * @returns {Promise<void>}
      */
     async notifyGuideApproved(guideId) {
         await this.create({
@@ -349,7 +452,14 @@ export const NotificationService = {
     },
 
     /**
-     * Helper: Notify guide rejection
+     * High-level helper to notify a guide applicant that their application was rejected or needs revision.
+     * 
+     * @async
+     * @function notifyGuideRejected
+     * @memberof NotificationService
+     * @param {string} guideId - ID of the guide user.
+     * @param {string} reason - The specific reason for rejection or revision request.
+     * @returns {Promise<void>}
      */
     async notifyGuideRejected(guideId, reason) {
         await this.create({

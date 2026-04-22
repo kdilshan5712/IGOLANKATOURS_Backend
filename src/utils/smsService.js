@@ -27,7 +27,20 @@ const logSms = async (to, message, type, status, errorMessage = null) => {
 };
 
 /**
- * Generic SMS sending function
+ * SMS Service Utility
+ * Provides methods for sending text message notifications using Twilio.
+ */
+
+/**
+ * Dispatches a text message to a recipient phone number through the Twilio API.
+ * Automatically logs the outcome (success or failure) in the database.
+ * 
+ * @async
+ * @function sendSMS
+ * @param {string} to - The recipient's phone number in E.164 format.
+ * @param {string} message - The text content of the SMS.
+ * @param {string} [type='general'] - The category of the SMS for logging purposes.
+ * @returns {Promise<Object>} An object containing success status and Twilio message SID.
  */
 export const sendSMS = async (to, message, type = 'general') => {
     console.log(`[SMS-DEBUG] sendSMS called to: ${to}, type: ${type}`);
@@ -57,6 +70,15 @@ export const sendSMS = async (to, message, type = 'general') => {
 
 /**
  * Map notification data to short SMS message
+ */
+/**
+ * Generates a concise, SMS-friendly version of a notification based on its type and metadata.
+ * Limits length to ensure compatibility and cost-effectiveness.
+ * 
+ * @function getShortMessage
+ * @param {string} type - The notification category.
+ * @param {Object} data - Metadata required for the message template.
+ * @returns {string|null} The formatted SMS string, or null if no mapping exists for the type.
  */
 export const getShortMessage = (type, data) => {
     switch (type) {

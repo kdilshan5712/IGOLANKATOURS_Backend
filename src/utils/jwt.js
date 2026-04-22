@@ -10,7 +10,11 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
 
 /**
- * Sign an Access Token (short-lived)
+ * Generates a short-lived JSON Web Token (Access Token).
+ * 
+ * @function signToken
+ * @param {Object} payload - The data to encode in the token.
+ * @returns {string} The signed JWT.
  */
 export const signToken = (payload) => {
   return jwt.sign(payload, JWT_SECRET, {
@@ -19,14 +23,23 @@ export const signToken = (payload) => {
 };
 
 /**
- * Verify an Access Token
+ * Verifies the validity of an Access Token.
+ * 
+ * @function verifyToken
+ * @param {string} token - The JWT to verify.
+ * @returns {Object} The decoded payload.
+ * @throws {Error} If the token is invalid or expired.
  */
 export const verifyToken = (token) => {
   return jwt.verify(token, JWT_SECRET);
 };
 
 /**
- * Sign a Refresh Token (long-lived)
+ * Generates a long-lived JSON Web Token (Refresh Token) for session persistence.
+ * 
+ * @function signRefreshToken
+ * @param {Object} payload - The data to encode in the token.
+ * @returns {string} The signed refreshment JWT.
  */
 export const signRefreshToken = (payload) => {
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, {
@@ -35,7 +48,12 @@ export const signRefreshToken = (payload) => {
 };
 
 /**
- * Verify a Refresh Token
+ * Verifies the validity of a Refresh Token.
+ * 
+ * @function verifyRefreshToken
+ * @param {string} token - The refreshment JWT to verify.
+ * @returns {Object} The decoded payload.
+ * @throws {Error} If the token is invalid or expired.
  */
 export const verifyRefreshToken = (token) => {
   return jwt.verify(token, REFRESH_TOKEN_SECRET);

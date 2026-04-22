@@ -1,8 +1,14 @@
 import db from "../config/db.js";
 
-/* ======================================================
-   GET ALL GUIDE DOCUMENTS (ADMIN)
-   ====================================================== */
+/**
+ * Retrieves all guide documents from the database, including guide names and emails.
+ * 
+ * @async
+ * @function getAllGuideDocuments
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of guide documents.
+ */
 export const getAllGuideDocuments = async (req, res) => {
   try {
     const result = await db.query(
@@ -35,9 +41,20 @@ export const getAllGuideDocuments = async (req, res) => {
   }
 };
 
-/* ======================================================
-   VERIFY GUIDE DOCUMENT (ADMIN)
-   ====================================================== */
+/**
+ * Verifies a specific guide document. If all documents for a guide are verified,
+ * the guide's status is automatically updated to 'approved' and the user status to 'active'.
+ * 
+ * @async
+ * @function verifyDocument
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.document_id - ID of the document to verify.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {string} req.user.user_id - ID of the admin performing the verification.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming verification.
+ */
 export const verifyDocument = async (req, res) => {
   try {
     const { document_id } = req.params;
@@ -112,9 +129,19 @@ export const verifyDocument = async (req, res) => {
   }
 };
 
-/* ======================================================
-   REJECT GUIDE DOCUMENT (ADMIN)
-   ====================================================== */
+/**
+ * Rejects a specific guide document by marking it as not verified.
+ * 
+ * @async
+ * @function rejectDocument
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.document_id - ID of the document to reject.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {string} req.user.user_id - ID of the admin performing the rejection.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming rejection.
+ */
 export const rejectDocument = async (req, res) => {
   try {
     const { document_id } = req.params;

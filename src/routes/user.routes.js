@@ -1,3 +1,10 @@
+/**
+ * Tourist User Profile & Private Routes
+ * Path: /api/user
+ * 
+ * Provides private endpoints for tourists to manage their own profile, 
+ * view personal bookings and custom tour requests, and manage profile photography.
+ */
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import upload from "../middleware/upload.middleware.js";

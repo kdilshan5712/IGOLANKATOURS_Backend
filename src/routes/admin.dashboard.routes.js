@@ -1,4 +1,10 @@
-
+/**
+ * Admin Dashboard Routes
+ * Path: /api/admin/dashboard
+ * 
+ * Provides endpoints for high-level dashboard analytics, including 
+ * statistics, notification counts, revenue reports, and automated report generation.
+ */
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 import adminDashboardController from '../controllers/admin.dashboard.controller.js';

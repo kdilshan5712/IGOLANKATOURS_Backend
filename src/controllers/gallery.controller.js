@@ -9,8 +9,19 @@ import supabase from '../config/supabase.js';
 import crypto from 'crypto';
 
 /**
- * 1️⃣ GET ALL GALLERY IMAGES (Admin)
- * GET /api/admin/gallery
+ * Retrieves all gallery images with optional filtering and pagination.
+ * 
+ * @async
+ * @function getAllGalleryImages
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} [req.query.category] - Filter by image category.
+ * @param {string} [req.query.status] - Filter by status (e.g., 'active').
+ * @param {string} [req.query.sort='created_at'] - Field to sort by.
+ * @param {number} [req.query.limit=50] - Number of records to return.
+ * @param {number} [req.query.offset=0] - Number of records to skip.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the images and total count.
  */
 export const getAllGalleryImages = async (req, res) => {
   try {
@@ -81,8 +92,13 @@ export const getAllGalleryImages = async (req, res) => {
 };
 
 /**
- * 2️⃣ GET GALLERY CATEGORIES
- * GET /api/admin/gallery/categories
+ * Retrieves a unique list of categories currently used in active gallery images.
+ * 
+ * @async
+ * @function getGalleryCategories
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of categories.
  */
 export const getGalleryCategories = async (req, res) => {
   try {
@@ -109,9 +125,19 @@ export const getGalleryCategories = async (req, res) => {
 };
 
 /**
- * 3️⃣ UPLOAD GALLERY IMAGE
- * POST /api/admin/gallery/upload
- * Multipart form-data with image file
+ * Uploads a new gallery image to Supabase storage and records the metadata in the database.
+ * 
+ * @async
+ * @function uploadGalleryImage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.file - The uploaded image file (via multer).
+ * @param {Object} req.body - Image metadata.
+ * @param {string} req.body.title - Title for the image.
+ * @param {string} [req.body.description] - Description for the image.
+ * @param {string} req.body.category - Category to assign.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the created gallery entry.
  */
 export const uploadGalleryImage = async (req, res) => {
   try {
@@ -223,8 +249,22 @@ export const uploadGalleryImage = async (req, res) => {
 };
 
 /**
- * 4️⃣ UPDATE GALLERY IMAGE
- * PATCH /api/admin/gallery/:galleryId
+ * Updates an existing gallery image's metadata or display properties.
+ * 
+ * @async
+ * @function updateGalleryImage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.galleryId - ID of the image to update.
+ * @param {Object} req.body - Updated image data.
+ * @param {string} [req.body.title] - Updated title.
+ * @param {string} [req.body.description] - Updated description.
+ * @param {string} [req.body.category] - Updated category.
+ * @param {boolean} [req.body.is_featured] - Updated featured status.
+ * @param {number} [req.body.display_order] - Updated display order.
+ * @param {string} [req.body.status] - Updated status.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated image data.
  */
 export const updateGalleryImage = async (req, res) => {
   try {
@@ -320,8 +360,15 @@ export const updateGalleryImage = async (req, res) => {
 };
 
 /**
- * 5️⃣ DELETE GALLERY IMAGE
- * DELETE /api/admin/gallery/:galleryId
+ * Deletes a gallery image from both Supabase storage and the database.
+ * 
+ * @async
+ * @function deleteGalleryImage
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.galleryId - ID of the image to delete.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
  */
 export const deleteGalleryImage = async (req, res) => {
   try {
@@ -381,8 +428,15 @@ export const deleteGalleryImage = async (req, res) => {
 };
 
 /**
- * 6️⃣ REORDER GALLERY IMAGES
- * PATCH /api/admin/gallery/reorder
+ * Updates the display order for multiple gallery images in a single batch.
+ * 
+ * @async
+ * @function reorderGalleryImages
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Reorder payload.
+ * @param {Array<Object>} req.body.images - Array of { gallery_id, display_order } objects.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming reorder.
  */
 export const reorderGalleryImages = async (req, res) => {
   try {
@@ -424,8 +478,13 @@ export const reorderGalleryImages = async (req, res) => {
 };
 
 /**
- * 7️⃣ GET GALLERY STATISTICS
- * GET /api/admin/gallery/stats
+ * Retrieves general statistics about the gallery, including active, featured, and total images.
+ * 
+ * @async
+ * @function getGalleryStats
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with gallery statistics.
  */
 export const getGalleryStats = async (req, res) => {
   try {

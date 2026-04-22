@@ -1,3 +1,10 @@
+/**
+ * External Contact & Lead Generation Routes
+ * Path: /api/contacts
+ * 
+ * Manages public inquiries from the contact form as well as 
+ * administrative oversight, status tracking, and replies for these messages.
+ */
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 import {

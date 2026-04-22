@@ -1,3 +1,10 @@
+/**
+ * Guide Availability Routes
+ * Path: /api/guide/availability (usually mounted under guide)
+ * 
+ * Manages the calendar availability for tour guides, permettant guides
+ * to define when they are available for tour assignments.
+ */
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {

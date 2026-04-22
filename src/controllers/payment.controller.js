@@ -2,7 +2,19 @@ import stripe from '../config/stripe.js';
 import pool from '../config/db.js';
 
 /**
- * Create a payment intent for a booking
+ * Creates a Stripe payment intent for a specific booking.
+ * Supports mock payment flow for testing environments when useMock is enabled.
+ * 
+ * @async
+ * @function createPaymentIntent
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Payment details.
+ * @param {string} req.body.bookingId - ID of the booking.
+ * @param {number} req.body.amount - Amount to charge.
+ * @param {string} [req.body.currency='usd'] - Currency code.
+ * @param {boolean} [req.body.useMock] - Whether to use a mock payment logic.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with client secret or mock ID.
  */
 export const createPaymentIntent = async (req, res) => {
     try {
@@ -88,7 +100,17 @@ export const createPaymentIntent = async (req, res) => {
 };
 
 /**
- * Confirm payment and update booking status
+ * Confirms a payment by verifying the payment intent status.
+ * Updates booking and payment records and triggers automated confirmation emails on success.
+ * 
+ * @async
+ * @function confirmPayment
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Confirmation details.
+ * @param {string} req.body.paymentIntentId - ID of the Stripe payment intent.
+ * @param {string} req.body.bookingId - ID of the associated booking.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming the payment status.
  */
 export const confirmPayment = async (req, res) => {
     try {
@@ -202,7 +224,18 @@ export const confirmPayment = async (req, res) => {
 };
 
 /**
- * Process refund for cancelled booking
+ * Processes a refund for a previously completed payment through Stripe.
+ * Updates both the payment and booking records with refund details.
+ * 
+ * @async
+ * @function processRefund
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Refund details.
+ * @param {string} req.body.bookingId - ID of the booking to refund.
+ * @param {number} [req.body.refundAmount] - Amount to refund (defaults to full payment).
+ * @param {string} [req.body.reason] - Reason for the refund.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the refund transaction details.
  */
 export const processRefund = async (req, res) => {
     try {
@@ -277,7 +310,15 @@ export const processRefund = async (req, res) => {
 };
 
 /**
- * Get payment history for a user
+ * Retrieves the payment transaction history for a specific user.
+ * 
+ * @async
+ * @function getPaymentHistory
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.userId - ID of the user.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the user's payment records.
  */
 export const getPaymentHistory = async (req, res) => {
     try {
@@ -313,7 +354,17 @@ export const getPaymentHistory = async (req, res) => {
 
 
 /**
- * Process dummy payment (Mock)
+ * Processes a simulated (dummy) payment for testing without using Stripe.
+ * Directly confirms the booking and sends confirmation emails.
+ * 
+ * @async
+ * @function processDummyPayment
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Payment details.
+ * @param {string} req.body.bookingId - ID of the booking.
+ * @param {number} req.body.amount - Amount to process.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the dummy transaction ID.
  */
 export const processDummyPayment = async (req, res) => {
     try {
@@ -397,7 +448,14 @@ export const processDummyPayment = async (req, res) => {
 };
 
 /**
- * Stripe webhook handler
+ * Handles incoming webhooks from Stripe to update payment statuses asynchronously.
+ * Supports intent succession, failure, and refunds.
+ * 
+ * @async
+ * @function webhookHandler
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming receipt of the event.
  */
 export const webhookHandler = async (req, res) => {
     const sig = req.headers['stripe-signature'];

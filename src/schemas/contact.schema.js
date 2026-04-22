@@ -1,12 +1,17 @@
-import { body } from 'express-validator';
-
 /**
- * Contact and AI Custom Tour Validation Schemas
+ * Contact & Custom Inquiry Validation Schemas
+ * 
+ * Defines express-validator rules for public communication channels, 
+ * including universal contact form entries and highly detailed custom 
+ * tour request parameters required for tailored trip planning.
+ * 
+ * @namespace contactSchemas
  */
 export const contactSchemas = {
   /**
    * Validation for Public Contact Form
    */
+  // @VALIDATION_RULE: Public Contact Form
   submit: [
     body('name')
       .trim()
@@ -32,6 +37,7 @@ export const contactSchemas = {
   /**
    * Validation for Custom Tour Request
    */
+  // @VALIDATION_RULE: Custom Tour Request
   customTour: [
     body('title')
       .trim()

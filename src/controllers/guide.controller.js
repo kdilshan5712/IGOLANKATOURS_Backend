@@ -6,9 +6,21 @@ import emailService from "../utils/emailService.js";
 import { emailTemplates } from "../utils/emailTemplates.js";
 import { generateEmailVerifyToken } from "../utils/tokens.js";
 
-/* ======================================================
-   REGISTER GUIDE
-   ====================================================== */
+/**
+ * Registers a new tour guide. Creates a user account with 'guide' role and 
+ * an initial tour guide profile. Sends a verification email upon success.
+ * 
+ * @async
+ * @function registerGuide
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Registration details.
+ * @param {string} req.body.email - Email address for the account.
+ * @param {string} req.body.password - Account password.
+ * @param {string} req.body.full_name - Full name of the guide.
+ * @param {string} [req.body.contact_number] - Optional contact number.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming successful registration.
+ */
 export const registerGuide = async (req, res) => {
   try {
     const { email, password, full_name, contact_number } = req.body;
@@ -95,9 +107,20 @@ export const registerGuide = async (req, res) => {
   }
 };
 
-/* ======================================================
-   UPLOAD GUIDE DOCUMENTS
-   ====================================================== */
+/**
+ * Uploads a verification document for a guide (e.g., license, ID card).
+ * Validates the file and document type before storing in Supabase and recording in DB.
+ * 
+ * @async
+ * @function uploadGuideDocuments
+ * @param {Object} req - Express request object.
+ * @param {Object} req.file - The document file to upload (via multer).
+ * @param {Object} req.body - Metadata.
+ * @param {string} req.body.document_type - Type of document ('license', 'certificate', etc.).
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the uploaded document metadata.
+ */
 export const uploadGuideDocuments = async (req, res) => {
   console.log("\n================================================");
   console.log("=== DOCUMENT UPLOAD REQUEST RECEIVED ===");
@@ -366,10 +389,16 @@ export const uploadGuideDocuments = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET GUIDE PROFILE
-   GET /api/guides/me
-   ====================================================== */
+/**
+ * Retrieves the complete profile of the authenticated guide, including verification documents.
+ * 
+ * @async
+ * @function getGuideProfile
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the guide's profile and documents.
+ */
 export const getGuideProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -439,10 +468,17 @@ export const getGuideProfile = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GUIDE DASHBOARD
-   GET /api/guides/dashboard
-   ====================================================== */
+/**
+ * Retrieves high-level dashboard information for an active guide.
+ * Includes account status, document verification status, and tour summaries.
+ * 
+ * @async
+ * @function getGuideDashboard
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with guide dashboard data.
+ */
 export const getGuideDashboard = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -526,8 +562,14 @@ export const getGuideDashboard = async (req, res) => {
 };
 
 /**
- * GET GUIDE BOOKINGS
- * GET /api/guides/bookings
+ * Retrieves all tour bookings assigned to the authenticated guide.
+ * 
+ * @async
+ * @function getGuideBookings
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of assigned bookings.
  */
 export const getGuideBookings = async (req, res) => {
   try {
@@ -588,11 +630,18 @@ export const getGuideBookings = async (req, res) => {
   }
 };
 
-/* ======================================================
-   UPLOAD PROFILE PHOTO
-   POST /api/guide/profile-photo
-   Auth: Required (Guide only)
-   ====================================================== */
+/**
+ * Uploads or updates the guide's profile photo.
+ * Stores the photo in Supabase and updates the URL in the database.
+ * 
+ * @async
+ * @function uploadProfilePhoto
+ * @param {Object} req - Express request object.
+ * @param {Object} req.file - The image file to upload (via multer).
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the new profile photo URL.
+ */
 export const uploadProfilePhoto = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -697,11 +746,16 @@ export const uploadProfilePhoto = async (req, res) => {
   }
 };
 
-/* ======================================================
-   DELETE PROFILE PHOTO
-   DELETE /api/guide/profile-photo
-   Auth: Required (Guide only)
-   ====================================================== */
+/**
+ * Deletes the authenticated guide's profile photo from storage and the database.
+ * 
+ * @async
+ * @function deleteProfilePhoto
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
+ */
 export const deleteProfilePhoto = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -762,11 +816,19 @@ export const deleteProfilePhoto = async (req, res) => {
   }
 };
 
-/* ======================================================
-   UPDATE GUIDE PROFILE
-   PUT /api/guide/me
-   Auth: Required (Guide only)
-   ====================================================== */
+/**
+ * Updates basic profile information (name and contact) for the authenticated guide.
+ * 
+ * @async
+ * @function updateGuideProfile
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Updated profile details.
+ * @param {string} req.body.full_name - New full name.
+ * @param {string} [req.body.contact_number] - New contact number.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated guide profile.
+ */
 export const updateGuideProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -820,11 +882,16 @@ export const updateGuideProfile = async (req, res) => {
   }
 };
 
-// ======================================================
-//    GET REJECTION DETAILS
-//    GET /api/guide/rejection-details
-//    Auth: Required (Rejected Guide only)
-//    ====================================================== */
+/**
+ * Retrieves details regarding an application rejection for the authenticated guide.
+ * 
+ * @async
+ * @function getRejectionDetails
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with rejection reason and metadata.
+ */
 export const getRejectionDetails = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -880,11 +947,16 @@ export const getRejectionDetails = async (req, res) => {
   }
 };
 
-// ======================================================
-//    RESUBMIT APPLICATION
-//    POST /api/guide/resubmit
-//    Auth: Required (Rejected Guide only)
-//    ====================================================== */
+/**
+ * Resubmits a guide application after it has been rejected, resetting the status to 'pending'.
+ * 
+ * @async
+ * @function resubmitApplication
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming resubmission.
+ */
 export const resubmitApplication = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -958,10 +1030,17 @@ export const resubmitApplication = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET GUIDE DASHBOARD STATISTICS
-   GET /api/guide/dashboard/stats
-   ====================================================== */
+/**
+ * Retrieves comprehensive dashboard statistics for the authenticated guide.
+ * Includes earnings, tour counts, ratings, trends, and recent reviews.
+ * 
+ * @async
+ * @function getGuideDashboardStats
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with tabulated guide statistics.
+ */
 export const getGuideDashboardStats = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1136,10 +1215,16 @@ export const getGuideDashboardStats = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET GUIDE AVAILABILITY
-   GET /api/guide/availability
-   ====================================================== */
+/**
+ * Retrieves the availability schedule for the authenticated guide for all future dates.
+ * 
+ * @async
+ * @function getAvailability
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the guide's future availability.
+ */
 export const getAvailability = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1181,10 +1266,20 @@ export const getAvailability = async (req, res) => {
   }
 };
 
-/* ======================================================
-   SET GUIDE AVAILABILITY
-   POST /api/guide/availability
-   ====================================================== */
+/**
+ * Sets or updates the guide's availability for a specific date.
+ * If status is missing, clearing availability record for that date.
+ * 
+ * @async
+ * @function setAvailability
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Availability details.
+ * @param {string} req.body.date - Date in YYYY-MM-DD format.
+ * @param {string} [req.body.status] - New status (e.g., 'available', 'unavailable').
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming the update.
+ */
 export const setAvailability = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1236,10 +1331,19 @@ export const setAvailability = async (req, res) => {
   }
 };
 
-/* ======================================================
-   MARK TOUR AS COMPLETED
-   PATCH /api/guide/bookings/:id/complete
-   ====================================================== */
+/**
+ * Marks a confirmed tour booking as 'completed'.
+ * Validates that the tour's end date has passed before allowing completion.
+ * 
+ * @async
+ * @function markTourCompleted
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the booking to mark as completed.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming status change.
+ */
 export const markTourCompleted = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1323,10 +1427,16 @@ export const markTourCompleted = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET GUIDE REVIEWS
-   GET /api/guide/reviews
-   ====================================================== */
+/**
+ * Retrieves all reviews and average rating for tours handled by the authenticated guide.
+ * 
+ * @async
+ * @function getGuideReviews
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with review details and average rating.
+ */
 export const getGuideReviews = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1391,10 +1501,21 @@ export const getGuideReviews = async (req, res) => {
   }
 };
 
-/* ======================================================
-   UPDATE BANK DETAILS
-   PUT /api/guide/bank-details
-   ====================================================== */
+/**
+ * Updates the bank account details of the authenticated guide for payout processing.
+ * 
+ * @async
+ * @function updateBankDetails
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Bank details.
+ * @param {string} req.body.bank_name - Name of the bank.
+ * @param {string} req.body.account_no - Account number.
+ * @param {string} req.body.account_name - Name of the account holder.
+ * @param {string} [req.body.branch_name] - Name of the bank branch.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with updated bank information.
+ */
 export const updateBankDetails = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1430,10 +1551,19 @@ export const updateBankDetails = async (req, res) => {
   }
 };
 
-/* ======================================================
-   REQUEST PAYOUT
-   POST /api/guide/payouts/request
-   ====================================================== */
+/**
+ * Submits a new payout request for the guide's available earnings balance.
+ * Validates account status, bank details, and available funds.
+ * 
+ * @async
+ * @function requestPayout
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Payout details.
+ * @param {number} req.body.amount - Amount requested for withdrawal.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the created payout request.
+ */
 export const requestPayout = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -1526,10 +1656,16 @@ export const requestPayout = async (req, res) => {
   }
 };
 
-/* ======================================================
-   GET PAYOUT HISTORY
-   GET /api/guide/payouts
-   ====================================================== */
+/**
+ * Retrieves the payout history for the authenticated guide.
+ * 
+ * @async
+ * @function getPayoutHistory
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated guide user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the history of payout requests.
+ */
 export const getPayoutHistory = async (req, res) => {
   try {
     const userId = req.user.user_id;

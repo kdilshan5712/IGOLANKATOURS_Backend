@@ -16,28 +16,34 @@ import crypto from "crypto";
  */
 
 /**
- * Generate a secure random token
- * @param {number} bytes - Number of random bytes (default: 32)
- * @returns {string} - Hex-encoded random token
+ * Generates a cryptographically secure random token.
+ * 
+ * @function generateSecureToken
+ * @param {number} [bytes=32] - Number of random bytes to generate.
+ * @returns {string} Hex-encoded random token.
  */
 export const generateSecureToken = (bytes = 32) => {
   return crypto.randomBytes(bytes).toString("hex");
 };
 
 /**
- * Hash a token using SHA256
- * Used to store hashed version in database for security
- * @param {string} token - Plain token to hash
- * @returns {string} - Hex-encoded SHA256 hash
+ * Hashes a token using the SHA256 algorithm.
+ * Used to securely store a non-reversible version of the token in the database.
+ * 
+ * @function hashToken
+ * @param {string} token - The plain-text token to hash.
+ * @returns {string} Hex-encoded SHA256 hash.
  */
 export const hashToken = (token) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
 
 /**
- * Generate token with expiry
- * @param {number} expiryMinutes - Token validity in minutes
- * @returns {Object} - { token, hashedToken, expiresAt }
+ * Generates a new secure token along with its hashed version and an expiration timestamp.
+ * 
+ * @function generateTokenWithExpiry
+ * @param {number} expiryMinutes - The number of minutes until the token expires.
+ * @returns {Object} An object containing the plain token, hashed token, and expiresAt date.
  */
 export const generateTokenWithExpiry = (expiryMinutes) => {
   const token = generateSecureToken();
@@ -52,9 +58,11 @@ export const generateTokenWithExpiry = (expiryMinutes) => {
 };
 
 /**
- * Verify if a token is expired
- * @param {Date|string} expiresAt - Expiry timestamp
- * @returns {boolean} - True if expired
+ * Checks if a given timestamp has already passed, indicating the token is expired.
+ * 
+ * @function isTokenExpired
+ * @param {Date|string} expiresAt - The expiration timestamp to check.
+ * @returns {boolean} True if the current time is past the expiration time.
  */
 export const isTokenExpired = (expiresAt) => {
   if (!expiresAt) return true;
@@ -62,10 +70,12 @@ export const isTokenExpired = (expiresAt) => {
 };
 
 /**
- * Check if cooldown period has passed
- * @param {Date|string} lastSent - Last email sent timestamp
- * @param {number} cooldownMinutes - Cooldown period in minutes
- * @returns {boolean} - True if cooldown passed
+ * Determines if enough time has passed since the last email was sent to allow a resend.
+ * 
+ * @function canResendEmail
+ * @param {Date|string} lastSent - The timestamp when the last email was dispatched.
+ * @param {number} [cooldownMinutes=2] - The required waiting period in minutes.
+ * @returns {boolean} True if the cooldown period has elapsed.
  */
 export const canResendEmail = (lastSent, cooldownMinutes = 2) => {
   if (!lastSent) return true;
@@ -75,10 +85,12 @@ export const canResendEmail = (lastSent, cooldownMinutes = 2) => {
 };
 
 /**
- * Get remaining cooldown time in seconds
- * @param {Date|string} lastSent - Last email sent timestamp
- * @param {number} cooldownMinutes - Cooldown period in minutes
- * @returns {number} - Remaining seconds (0 if cooldown passed)
+ * Calculates the remaining time in seconds until a resend is permitted.
+ * 
+ * @function getRemainingCooldown
+ * @param {Date|string} lastSent - The timestamp when the last email was dispatched.
+ * @param {number} [cooldownMinutes=2] - The required waiting period in minutes.
+ * @returns {number} The absolute number of seconds remaining in the cooldown.
  */
 export const getRemainingCooldown = (lastSent, cooldownMinutes = 2) => {
   if (!lastSent) return 0;
@@ -99,16 +111,20 @@ export const TOKEN_CONFIG = {
 };
 
 /**
- * Generate email verification token
- * @returns {Object} - { token, hashedToken, expiresAt }
+ * Generates a secure token specifically for email verification with the standard 24-hour expiry.
+ * 
+ * @function generateEmailVerifyToken
+ * @returns {Object} An object containing the plain token, hashed token, and expiration date.
  */
 export const generateEmailVerifyToken = () => {
   return generateTokenWithExpiry(TOKEN_CONFIG.EMAIL_VERIFY_EXPIRY_MINUTES);
 };
 
 /**
- * Generate password reset token
- * @returns {Object} - { token, hashedToken, expiresAt }
+ * Generates a secure token specifically for password resets with the standard 1-hour expiry.
+ * 
+ * @function generatePasswordResetToken
+ * @returns {Object} An object containing the plain token, hashed token, and expiration date.
  */
 export const generatePasswordResetToken = () => {
   return generateTokenWithExpiry(TOKEN_CONFIG.PASSWORD_RESET_EXPIRY_MINUTES);

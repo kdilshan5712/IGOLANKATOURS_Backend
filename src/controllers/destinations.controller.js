@@ -1,5 +1,14 @@
 import db from '../config/db.js';
 
+/**
+ * Retrieves all destinations from the database, ordered alphabetically by name.
+ * 
+ * @async
+ * @function getAllDestinations
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of destinations.
+ */
 export const getAllDestinations = async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM destinations ORDER BY name ASC');
@@ -16,6 +25,20 @@ export const getAllDestinations = async (req, res) => {
     }
 };
 
+/**
+ * Creates a new destination in the database.
+ * 
+ * @async
+ * @function createDestination
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Destination details.
+ * @param {string} req.body.name - Name of the destination.
+ * @param {string} req.body.category - Category (e.g., Beach, Nature).
+ * @param {string} req.body.description - Detailed description.
+ * @param {string} req.body.image_url - URL for the destination's primary image.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the created destination.
+ */
 export const createDestination = async (req, res) => {
     const { name, category, description, image_url } = req.body;
     try {
@@ -37,6 +60,18 @@ export const createDestination = async (req, res) => {
     }
 };
 
+/**
+ * Updates an existing destination's information.
+ * 
+ * @async
+ * @function updateDestination
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the destination to update.
+ * @param {Object} req.body - Updated destination data.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated destination.
+ */
 export const updateDestination = async (req, res) => {
     const { id } = req.params;
     const { name, category, description, image_url } = req.body;
@@ -65,6 +100,17 @@ export const updateDestination = async (req, res) => {
     }
 };
 
+/**
+ * Deletes a destination from the database.
+ * 
+ * @async
+ * @function deleteDestination
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the destination to delete.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
+ */
 export const deleteDestination = async (req, res) => {
     const { id } = req.params;
     try {

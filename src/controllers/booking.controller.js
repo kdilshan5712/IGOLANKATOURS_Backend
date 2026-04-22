@@ -2,9 +2,24 @@ import db from "../config/db.js";
 import pricingService from "../services/pricing.service.js";
 
 /**
- * CREATE BOOKING
- * POST /api/bookings
- * Auth: Required (Tourist only)
+ * Creates a new tour booking draft. Validates user status, package availability,
+ * traveler counts, and calculates dynamic pricing with optional promo code application.
+ * 
+ * @async
+ * @function createBooking
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Booking details.
+ * @param {string} req.body.package_id - ID of the selected tour package.
+ * @param {string} req.body.travel_date - Planned travel date (YYYY-MM-DD).
+ * @param {number} req.body.adults - Number of adult travelers.
+ * @param {number} [req.body.children=0] - Number of child travelers.
+ * @param {string} [req.body.room_type] - Type of room chosen.
+ * @param {Array<Object>} req.body.travellers - Details of all travelers.
+ * @param {string} [req.body.promo_code] - Optional coupon code for discounts.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {string} req.user.user_id - ID of the tourist.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the drafted booking.
  */
 export const createBooking = async (req, res) => {
   console.log("DEBUG: Booking Request Body:", JSON.stringify(req.body, null, 2));
@@ -230,6 +245,7 @@ export const createBooking = async (req, res) => {
     });
 
   } catch (error) {
+    // @ERROR_PROPAGATION: Database transaction is rolled back and error is forwarded to global handler
     await client.query('ROLLBACK');
     console.error("Error creating booking:", error);
     return res.status(500).json({
@@ -242,9 +258,16 @@ export const createBooking = async (req, res) => {
 };
 
 /**
- * GET MY BOOKINGS
- * GET /api/bookings/my
- * Auth: Required (Tourist only)
+ * Retrieves all bookings associated with the authenticated tourist, 
+ * including package details and assigned guide information.
+ * 
+ * @async
+ * @function getMyBookings
+ * @param {Object} req - Express request object.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {string} req.user.user_id - ID of the tourist.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of bookings.
  */
 export const getMyBookings = async (req, res) => {
   const user_id = req.user.user_id;
@@ -291,6 +314,7 @@ export const getMyBookings = async (req, res) => {
       bookings: result.rows
     });
   } catch (error) {
+    // @ERROR_PROPAGATION: Handled by server.js global error middleware
     console.error("Error fetching bookings:", error);
     return res.status(500).json({
       message: "Failed to fetch bookings",
@@ -300,9 +324,20 @@ export const getMyBookings = async (req, res) => {
 };
 
 /**
- * CANCEL BOOKING
- * POST /api/bookings/:id/cancel
- * Auth: Required (Tourist only - must own the booking)
+ * Cancels an existing booking, calculates applicable refunds based on time until travel,
+ * updates status, and sends notification emails.
+ * 
+ * @async
+ * @function cancelBooking
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the booking to cancel.
+ * @param {Object} req.body - Request body.
+ * @param {string} [req.body.reason] - Reason for cancellation.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {string} req.user.user_id - ID of the tourist.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the cancellation and refund summary.
  */
 export const cancelBooking = async (req, res) => {
   const { id } = req.params;
@@ -426,6 +461,7 @@ export const cancelBooking = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Propagates to centralized exception handler
     console.error('[BOOKING] Cancel error:', err);
     res.status(500).json({
       success: false,
@@ -435,9 +471,17 @@ export const cancelBooking = async (req, res) => {
 };
 
 /**
- * DOWNLOAD INVOICE
- * GET /api/bookings/:id/invoice
- * Auth: Required (Tourist only - must own the booking)
+ * Generates and streams a PDF invoice for a confirmed/paid booking.
+ * 
+ * @async
+ * @function downloadInvoice
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the booking.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {string} req.user.user_id - ID of the tourist.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Streams the generated PDF invoice.
  */
 export const downloadInvoice = async (req, res) => {
   const { id } = req.params;
@@ -483,6 +527,7 @@ export const downloadInvoice = async (req, res) => {
     await generateBookingInvoicePDF(booking, res);
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Propagates to global error handler
     console.error('[BOOKING] Invoice generation error:', err);
     res.status(500).json({
       success: false,
@@ -492,9 +537,22 @@ export const downloadInvoice = async (req, res) => {
 };
 
 /**
- * CONVERT CUSTOM REQUEST TO BOOKING
- * POST /api/bookings/convert/:sessionId
- * Auth: Required (Admin only)
+ * Converts an AI-generated custom tour request into a formal booking and hidden tour package (Admin action).
+ * 
+ * @async
+ * @function convertCustomToBooking
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.sessionId - UUID of the AI chatbot session.
+ * @param {Object} req.body - Booking details.
+ * @param {number} req.body.final_price - Final price agreed for the custom tour.
+ * @param {string} req.body.travel_date - Planned travel date.
+ * @param {number} req.body.adults - Number of adults.
+ * @param {number} req.body.children - Number of children.
+ * @param {string} [req.body.notes] - Administrative notes for the package.
+ * @param {Object} req.user - Authenticated admin user object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the newly created booking.
  */
 export const convertCustomToBooking = async (req, res) => {
   const { sessionId } = req.params;
@@ -600,9 +658,18 @@ export const convertCustomToBooking = async (req, res) => {
 };
 
 /**
- * ACCEPT AND BOOK CUSTOM TOUR (Tourist)
- * POST /api/bookings/accept-custom/:sessionId
- * Auth: Required (Tourist only)
+ * Accepts an admin-approved custom tour request and creates a confirmed booking
+ * and a corresponding hidden tour package for the tourist.
+ * 
+ * @async
+ * @function acceptAndBookCustomTour
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.sessionId - UUID of the AI chatbot session.
+ * @param {Object} req.user - Authenticated tourist user object.
+ * @param {string} req.user.user_id - ID of the tourist.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the confirmed booking and package details.
  */
 export const acceptAndBookCustomTour = async (req, res) => {
   console.log("🚀 Executing acceptAndBookCustomTour V2.2 (Final Column Fix Applied)");

@@ -3,7 +3,17 @@ import emailService from '../utils/emailService.js';
 
 /**
  * Reminder Service
- * Handles automated payment reminders for bookings with partial payments
+ * Handles automated payment reminders for bookings with partial payments.
+ */
+
+/**
+ * Sweeps the database for confirmed bookings with outstanding balances that are 
+ * approaching their travel date (30 or 14 days away). Sends automated email 
+ * reminders to the tourists for these bookings.
+ * 
+ * @async
+ * @function sendBalanceReminders
+ * @returns {Promise<Object>} An object indicating success status and the count of reminders sent.
  */
 
 export const sendBalanceReminders = async () => {

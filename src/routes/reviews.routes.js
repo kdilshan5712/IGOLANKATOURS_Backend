@@ -1,3 +1,10 @@
+/**
+ * User Review & Social Proof Routes
+ * Path: /api/reviews
+ * 
+ * Manages the full lifecycle of tour reviews including public display, 
+ * authenticated submission with image uploads, and administrative moderation.
+ */
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 import { uploadReviewImages } from '../middleware/upload.middleware.js';

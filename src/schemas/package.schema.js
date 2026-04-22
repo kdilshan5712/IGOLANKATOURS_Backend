@@ -1,12 +1,17 @@
-import { query, param } from 'express-validator';
-
 /**
- * Package Service Validation Schemas
+ * Tour Package & Pricing Validation Schemas
+ * 
+ * Defines express-validator rules for package discovery and dynamic pricing 
+ * calculations, including complex query parameter validation for categorical 
+ * filtering, budget tiers, and group composition limits.
+ * 
+ * @namespace packageSchemas
  */
 export const packageSchemas = {
   /**
    * Validation for getting all packages with filters
    */
+  // @VALIDATION_RULE: Package Discovery (Filtering)
   getAll: [
     query('category')
       .optional({ checkFalsy: true })
@@ -38,6 +43,7 @@ export const packageSchemas = {
   /**
    * Validation for calculating package price
    */
+  // @VALIDATION_RULE: Dynamic Pricing Calculation
   calculatePrice: [
     param('id')
       .notEmpty().withMessage('Package ID is required')

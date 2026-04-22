@@ -1,6 +1,14 @@
 import db from "../config/db.js";
 
-// Get all pricing rules
+/**
+ * Retrieves all seasonal pricing rules sorted by their start date.
+ * 
+ * @async
+ * @function getAllRules
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the list of pricing rules.
+ */
 export const getAllRules = async (req, res) => {
     try {
         const result = await db.query(`
@@ -21,7 +29,23 @@ export const getAllRules = async (req, res) => {
     }
 };
 
-// Create new pricing rule
+/**
+ * Creates a new seasonal pricing rule for calculating tour costs.
+ * 
+ * @async
+ * @function createRule
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Rule details.
+ * @param {string} req.body.name - Name of the rule.
+ * @param {number} req.body.start_month - Starting month (1-12).
+ * @param {number} req.body.start_day - Starting day (1-31).
+ * @param {number} req.body.end_month - Ending month (1-12).
+ * @param {number} req.body.end_day - Ending day (1-31).
+ * @param {number} req.body.percentage - Price multiplier/adjustment percentage.
+ * @param {string} [req.body.coast_type='all'] - Geographic region ('south', 'east', or 'all').
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the created rule.
+ */
 export const createRule = async (req, res) => {
     try {
         const {
@@ -64,7 +88,18 @@ export const createRule = async (req, res) => {
     }
 };
 
-// Update pricing rule
+/**
+ * Updates an existing seasonal pricing rule.
+ * 
+ * @async
+ * @function updateRule
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the rule to update.
+ * @param {Object} req.body - Fields to update.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the updated rule.
+ */
 export const updateRule = async (req, res) => {
     try {
         const { id } = req.params;
@@ -116,7 +151,17 @@ export const updateRule = async (req, res) => {
     }
 };
 
-// Delete pricing rule
+/**
+ * Deletes a seasonal pricing rule from the database.
+ * 
+ * @async
+ * @function deleteRule
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - ID of the rule to delete.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming deletion.
+ */
 export const deleteRule = async (req, res) => {
     try {
         const { id } = req.params;

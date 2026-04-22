@@ -1,3 +1,10 @@
+/**
+ * Booking Lifecycle Routes
+ * Path: /api/bookings
+ * 
+ * Manages the end-to-end booking process for tourists, from initial creation 
+ * to cancellations, invoice downloads, and converting custom tour requests into active bookings.
+ */
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {

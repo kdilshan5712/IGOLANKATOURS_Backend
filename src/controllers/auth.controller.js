@@ -35,10 +35,22 @@ const clearRefreshTokenCookie = (res) => {
   });
 };
 
-/* ======================================================
-   TOURIST REGISTER (DEFAULT ROLE)
-   POST /api/auth/register
-   ====================================================== */
+/**
+ * Registers a new tourist user, validates their data, hashes their password,
+ * and sends a verification email.
+ * 
+ * @async
+ * @function registerTourist
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Registration details.
+ * @param {string} req.body.email - Valid email address.
+ * @param {string} req.body.password - Secure password.
+ * @param {string} req.body.full_name - Tourist's full name.
+ * @param {string} [req.body.country] - Tourist's country.
+ * @param {string} [req.body.phone] - Tourist's phone number.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the user data and JWT.
+ */
 export const registerTourist = async (req, res) => {
   try {
     const { email, password, full_name, country, phone } = req.body;
@@ -204,15 +216,43 @@ export const registerTourist = async (req, res) => {
     const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verifyToken}`;
 
     // Send verification email using new service
+    let emailSendingError = null;
     try {
       const verificationEmail = emailTemplates.emailVerification(full_name.trim(), verificationLink);
-      await sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
+      const verifyResult = await sendEmail(normalizedEmail, verificationEmail.subject, verificationEmail.html);
 
-      // Also send welcome email for new registration
-      await sendWelcomeEmail(normalizedEmail, full_name.trim());
-
+      if (!verifyResult || !verifyResult.success) {
+        emailSendingError = verifyResult?.error || "Unknown email provider error";
+        console.error("❌ Failed to send verification email:", emailSendingError);
+      } else {
+        // Only send welcome email if verification sent successfully
+        const welcomeResult = await sendWelcomeEmail(normalizedEmail, full_name.trim());
+        if (!welcomeResult || !welcomeResult.success) {
+          console.error("❌ Welcome email failed, but verification was sent.");
+        }
+      }
     } catch (emailErr) {
-      console.error("❌ Error sending email:", emailErr.message);
+      emailSendingError = emailErr.message;
+      console.error("❌ Error in email sending block:", emailErr.message);
+    }
+
+    if (emailSendingError) {
+      // Return 201 because the user WAS created, but provide the email error details.
+      return res.status(201).json({
+        message: "Registration successful, but we could not send the verification email. Please check your email configuration or contact support.",
+        emailError: emailSendingError,
+        token,
+        user: {
+          id: user.user_id,
+          email: user.email,
+          role: user.role,
+          email_verified: user.email_verified,
+          full_name: profileResult.rows[0]?.full_name || null,
+          name: profileResult.rows[0]?.full_name || null,
+          country: profileResult.rows[0]?.country || null,
+          phone: profileResult.rows[0]?.phone || null
+        }
+      });
     }
 
     res.status(201).json({
@@ -231,15 +271,24 @@ export const registerTourist = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Caught exceptions are logged and forwarded to the global error handler
     console.error("Tourist register error:", err);
     res.status(500).json({ message: "Registration failed" });
   }
 };
 
-/* ======================================================
-   LOGIN (ADMIN / TOURIST / GUIDE)
-   POST /api/auth/login
-   ====================================================== */
+/**
+ * Authenticates a user (admin, tourist, or guide) and issues JWT access and refresh tokens.
+ * 
+ * @async
+ * @function login
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Login credentials.
+ * @param {string} req.body.email - Registered email.
+ * @param {string} req.body.password - User password.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with access token and user profile.
+ */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -427,6 +476,7 @@ export const login = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Handled by server.js global error handler
     console.error("Login fatal error:", err);
     res.status(500).json({
       message: "Login failed due to a server error"
@@ -434,10 +484,17 @@ export const login = async (req, res) => {
   }
 };
 
-/* ======================================================
-   VERIFY EMAIL
-   GET /api/auth/verify-email?token=xxx
-   ====================================================== */
+/**
+ * Verifies a user's email address using a token sent during registration.
+ * 
+ * @async
+ * @function verifyEmail
+ * @param {Object} req - Express request object.
+ * @param {Object} req.query - Query parameters.
+ * @param {string} req.query.token - plain-text verification token.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming verification.
+ */
 export const verifyEmail = async (req, res) => {
   try {
     const { token } = req.query;
@@ -517,6 +574,7 @@ export const verifyEmail = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Logged and sent to client via global error handler
     console.error("Email verification error:", err);
     res.status(500).json({
       message: "Email verification failed",
@@ -525,10 +583,17 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
-/* ======================================================
-   RESEND VERIFICATION EMAIL
-   POST /api/auth/resend-verification
-   ====================================================== */
+/**
+ * Resends the verification email to an unverified user, respecting a cooldown period.
+ * 
+ * @async
+ * @function resendVerification
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.email - Registered email.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming email dispatch.
+ */
 export const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
@@ -624,15 +689,23 @@ export const resendVerification = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Propagates to server.js
     console.error("Resend verification error:", err);
     res.status(500).json({ message: "Failed to resend verification email" });
   }
 };
 
-/* ======================================================
-   FORGOT PASSWORD
-   POST /api/auth/forgot-password
-   ====================================================== */
+/**
+ * Initiates the password reset process by generating a token and sending an email.
+ * 
+ * @async
+ * @function forgotPassword
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Request body.
+ * @param {string} req.body.email - Registered email.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming request processing.
+ */
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -707,15 +780,24 @@ export const forgotPassword = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Handled by centralized error middleware
     console.error("Forgot password error:", err);
     res.status(500).json({ message: "Failed to process password reset request" });
   }
 };
 
-/* ======================================================
-   RESET PASSWORD WITH TOKEN
-   POST /api/auth/reset-password
-   ====================================================== */
+/**
+ * Resets a user's password using a valid reset token.
+ * 
+ * @async
+ * @function resetPassword
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Password reset details.
+ * @param {string} req.body.token - plain-text password reset token.
+ * @param {string} req.body.newPassword - New secure password.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming password reset.
+ */
 export const resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -801,10 +883,19 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-/* ======================================================
-   SOCIAL LOGIN (GOOGLE / FACEBOOK)
-   POST /api/auth/social-login
-   ====================================================== */
+/**
+ * Authenticates or registers a user using social identity providers (Google or Facebook).
+ * 
+ * @async
+ * @function socialLogin
+ * @param {Object} req - Express request object.
+ * @param {Object} req.body - Social login payload.
+ * @param {string} req.body.provider - Social provider name ('google' or 'facebook').
+ * @param {string} [req.body.credential] - Google Identity Services ID token.
+ * @param {string} [req.body.accessToken] - Facebook access token.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with access token and user profile.
+ */
 let googleClient;
 
 export const socialLogin = async (req, res) => {
@@ -936,10 +1027,16 @@ export const socialLogin = async (req, res) => {
   }
 };
 
-/* ======================================================
-   REFRESH ACCESS TOKEN
-   POST /api/auth/refresh
-   ====================================================== */
+/**
+ * Issues a new access token using a valid refresh token stored in a HTTP-only cookie.
+ * 
+ * @async
+ * @function refreshToken
+ * @param {Object} req - Express request object.
+ * @param {Object} req.cookies - Cookies containing the refresh token.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the new access token.
+ */
 export const refreshToken = async (req, res) => {
   try {
     const token = req.cookies[REFRESH_TOKEN_COOKIE_NAME];
@@ -985,10 +1082,15 @@ export const refreshToken = async (req, res) => {
   }
 };
 
-/* ======================================================
-   LOGOUT (CLEAR COOKIES)
-   POST /api/auth/logout
-   ====================================================== */
+/**
+ * Logs out the user by clearing the refresh token cookie.
+ * 
+ * @async
+ * @function logout
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response confirming logout.
+ */
 export const logout = async (req, res) => {
   clearRefreshTokenCookie(res);
   res.json({ message: "Logged out successfully" });

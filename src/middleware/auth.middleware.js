@@ -2,9 +2,15 @@ import { verifyToken } from "../utils/jwt.js";
 import db from "../config/db.js";
 
 /**
- * AUTHENTICATION MIDDLEWARE
- * - Verifies JWT
- * - Attaches user payload to req.user
+ * Authentication Middleware
+ * Validates the presence and integrity of a Bearer JWT in the request headers.
+ * If valid, decodes the payload and attaches it to the 'req.user' object for downstream access.
+ * 
+ * @function authenticate
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @param {Function} next - Express next middleware function.
+ * @returns {void}
  */
 export const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -63,14 +69,20 @@ export const authenticate = (req, res, next) => {
 };
 
 /**
- * ROLE-BASED AUTHORIZATION WITH DATABASE VALIDATION
- * Usage: authorize("admin"), authorize("guide"), authorize("tourist")
- * Can also use multiple roles: authorize("admin", "guide")
+ * Role-Based Authorization Middleware (with strict Database Validation)
+ * usage: authorize("admin"), authorize("guide"), authorize("tourist")
  * 
- * This middleware validates that:
- * 1. User has the required role in their JWT
- * 2. User's role in database matches JWT role
- * 3. User has a valid profile in the corresponding role table
+ * Performs a deep validation by:
+ * 1. Checking if the user's role (from JWT) is included in the allowed roles.
+ * 2. Verifying the role directly against the 'users' table in the database.
+ * 3. Ensuring a valid profile exists in the corresponding functional table (tourist/tour_guide/admin).
+ * 4. Confirming the account status is 'active' (or allowed transitory states).
+ * 
+ * Includes a mandatory database timeout to ensure security and prevent hangs during DB instability.
+ * 
+ * @function authorize
+ * @param {...string} allowedRoles - Variable number of role strings that are permitted to access the route.
+ * @returns {Function} An asynchronous Express middleware function.
  */
 export const authorize = (...allowedRoles) => {
   return async (req, res, next) => {

@@ -1,3 +1,10 @@
+/**
+ * Admin Booking Management Routes
+ * Path: /api/admin/bookings
+ * 
+ * Handles administrative operations for managing customer bookings, 
+ * including status updates and tour guide assignments.
+ */
 import express from "express";
 import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {
