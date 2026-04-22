@@ -1,3 +1,5 @@
+import { body } from 'express-validator';
+
 /**
  * Contact & Custom Inquiry Validation Schemas
  * 

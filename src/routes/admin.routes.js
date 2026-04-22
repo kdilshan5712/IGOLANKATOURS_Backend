@@ -53,9 +53,13 @@ import {
    deleteRule
 } from "../controllers/admin.pricing.controller.js";
 import { updateGuideCommission } from "../controllers/admin.guide.controller.js";
-import { getAdminFaqs, createFaq, updateFaq, deleteFaq } from "../controllers/faq.controller.js";
-    deleteCoupon
+import { 
+    getAllCoupons, 
+    createCoupon, 
+    updateCoupon, 
+    deleteCoupon 
 } from "../controllers/admin.coupon.controller.js";
+import { getAdminFaqs, createFaq, updateFaq, deleteFaq } from "../controllers/faq.controller.js";
 import { managementSchemas } from "../schemas/admin.management.schema.js";
 import { validate } from "../middleware/validation.middleware.js";
 

@@ -1,3 +1,5 @@
+import { body, param, query } from 'express-validator';
+
 /**
  * AI Assistant Validation Schemas
  * 
@@ -52,3 +54,4 @@ export const aiSchemas = {
       .isString().withMessage('Message text must be a string')
   ]
 };
+

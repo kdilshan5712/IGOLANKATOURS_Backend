@@ -1,3 +1,5 @@
+import { body, param, query } from 'express-validator';
+
 /**
  * Tour Package & Pricing Validation Schemas
  * 
@@ -66,3 +68,4 @@ export const packageSchemas = {
       .isInt({ min: 1, max: 50 }).withMessage('Travelers must be between 1 and 50')
   ]
 };
+

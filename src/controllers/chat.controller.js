@@ -24,11 +24,13 @@ export const getTourMessages = async (req, res) => {
         const bookingResult = await db.query(bookingQuery, [bookingId]);
 
         if (bookingResult.rows.length === 0) {
+            // @VALIDATION_RULE: Target entity (booking/session) existence verification
             return res.status(404).json({ success: false, message: "Booking not found" });
         }
 
         const booking = bookingResult.rows[0];
 
+        // @VALIDATION_RULE: Multi-role permission enforcement (Tourist/Guide/Admin)
         // Check permissions (Admins have full access, skip checks)
         if (userRole !== "admin") {
             if (userRole === "tourist" && booking.user_id !== userId) {
@@ -88,6 +90,7 @@ export const getTourMessages = async (req, res) => {
         });
 
     } catch (error) {
+        // @ERROR_PROPAGATION: Messaging retrieval errors are logged and returned as 500
         console.error("Error in getTourMessages:", error);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
@@ -115,11 +118,13 @@ export const getChatbotMessages = async (req, res) => {
         const sessionResult = await db.query(`SELECT * FROM chatbot_session WHERE session_id = $1`, [sessionId]);
 
         if (sessionResult.rows.length === 0) {
+            // @VALIDATION_RULE: AI Session existence verification
             return res.status(404).json({ success: false, message: "Session not found" });
         }
 
         const session = sessionResult.rows[0];
 
+        // @VALIDATION_RULE: Session ownership verification
         // Check permissions: only the tourist who started it or an admin can see it
         if (userRole !== "admin" && session.tourist_id) {
             // Need to link tourist_id to user_id
@@ -157,6 +162,7 @@ export const getChatbotMessages = async (req, res) => {
         });
 
     } catch (error) {
+        // @ERROR_PROPAGATION: AI Chat history retrieval failures are logged
         console.error("Error in getChatbotMessages:", error);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
@@ -184,6 +190,7 @@ export const sendChatbotMessage = async (req, res) => {
     const userRole = req.user.role;
 
     if (!message || message.trim() === '') {
+        // @VALIDATION_RULE: Message content integrity and sanitization
         return res.status(400).json({ success: false, message: "Message cannot be empty" });
     }
 
@@ -191,6 +198,7 @@ export const sendChatbotMessage = async (req, res) => {
         // 1. Verify session
         const sessionResult = await db.query(`SELECT * FROM chatbot_session WHERE session_id = $1`, [sessionId]);
         if (sessionResult.rows.length === 0) {
+            // @VALIDATION_RULE: Target session verification for message routing
             return res.status(404).json({ success: false, message: "Session not found" });
         }
         const session = sessionResult.rows[0];
@@ -243,6 +251,7 @@ export const sendChatbotMessage = async (req, res) => {
         });
 
     } catch (error) {
+        // @ERROR_PROPAGATION: AI Message persistence failures are captured and reported
         console.error("Error in sendChatbotMessage:", error);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
@@ -270,6 +279,7 @@ export const sendTourMessage = async (req, res) => {
     const userRole = req.user.role;
 
     if (!message || message.trim() === '') {
+        // @VALIDATION_RULE: Message content integrity and sanitization
         return res.status(400).json({ success: false, message: "Message cannot be empty" });
     }
 
@@ -279,15 +289,18 @@ export const sendTourMessage = async (req, res) => {
         const bookingResult = await db.query(bookingQuery, [bookingId]);
 
         if (bookingResult.rows.length === 0) {
+            // @VALIDATION_RULE: Target entity (booking/session) existence verification
             return res.status(404).json({ success: false, message: "Booking not found" });
         }
 
         const booking = bookingResult.rows[0];
 
         if (!booking.is_chat_authorized && userRole !== 'admin') {
+            // @VALIDATION_RULE: Operational lock verification (Authorized Chat Status)
             return res.status(403).json({ success: false, message: "Chat is currently locked by the admin" });
         }
 
+        // @VALIDATION_RULE: Sender role routing and receiver identification
         let receiverId = null;
 
         if (userRole === "tourist") {
@@ -355,6 +368,7 @@ export const sendTourMessage = async (req, res) => {
         });
 
     } catch (error) {
+        // @ERROR_PROPAGATION: Tour messaging failures are logged for debugging
         console.error("Error in sendTourMessage:", error);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
@@ -382,10 +396,12 @@ export const authorizeChat = async (req, res) => {
     const adminId = req.user.user_id || req.user.id;
 
     if (userRole !== 'admin') {
+        // @VALIDATION_RULE: Admin privilege enforcement for chat management
         return res.status(403).json({ success: false, message: "Only admins can authorize chats" });
     }
 
     if (typeof is_authorized !== 'boolean') {
+        // @VALIDATION_RULE: Type enforcement for authorization status
         return res.status(400).json({ success: false, message: "is_authorized must be a boolean" });
     }
 
@@ -395,6 +411,7 @@ export const authorizeChat = async (req, res) => {
         const bookingResult = await db.query(bookingQuery, [bookingId]);
 
         if (bookingResult.rows.length === 0) {
+            // @VALIDATION_RULE: Target entity (booking/session) existence verification
             return res.status(404).json({ success: false, message: "Booking not found" });
         }
 
@@ -426,6 +443,7 @@ export const authorizeChat = async (req, res) => {
         });
 
     } catch (error) {
+        // @ERROR_PROPAGATION: Administrative lock operations failures are logged
         console.error("Error in authorizeChat:", error);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }

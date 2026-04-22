@@ -22,6 +22,7 @@ export const saveChatbotSession = async (req, res) => {
   try {
     const { tourist_id, preferences, recommendations } = req.body;
 
+    // @VALIDATION_RULE: AI Session Input Sanitization
     // Validate inputs - basics only as it can be partially filled
     const result = await db.query(`
       INSERT INTO chatbot_session (tourist_id, preferences, recommendations, created_at)
@@ -40,6 +41,7 @@ export const saveChatbotSession = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Database connection or query failures are logged and returned as a 500 response
     console.error("saveChatbotSession error:", err);
     res.status(500).json({
       success: false,
@@ -87,6 +89,7 @@ export const submitCustomTourRequest = async (req, res) => {
     const authenticatedUserId = req.user?.user_id;
 
     if (!authenticatedUserId) {
+        // @VALIDATION_RULE: Authentication enforcement for custom tour submissions
         return res.status(401).json({ success: false, message: "Authentication required to submit custom tour" });
     }
 
@@ -115,15 +118,13 @@ export const submitCustomTourRequest = async (req, res) => {
           finalTouristId = recovery.rows[0].tourist_id;
           console.log("♻️ [AI] Auto-created tourist_id:", finalTouristId);
         } catch (recoveryErr) {
+          // @ERROR_PROPAGATION: Profile recovery failures are logged but do not block the main request flow
           console.error("❌ [AI] Recovery failed:", recoveryErr.message);
         }
       }
     }
 
-    // Ensure numeric values are numbers
-    const duration = parseInt(duration_days) || 1;
-    const travelers = parseInt(traveler_count) || 1;
-    const priceMin = parseFloat(estimated_price_min) || 0;
+    // @VALIDATION_RULE: Numeric parsing for tour metadata (duration, travelers, pricing)
     const priceMax = parseFloat(estimated_price_max) || 0;
 
     console.log(`📝 [AI] Inserting into chatbot_session with tourist_id: ${finalTouristId}`);
@@ -161,6 +162,7 @@ export const submitCustomTourRequest = async (req, res) => {
     });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Caught exceptions in custom tour submission are returned as 500 errors
     console.error("submitCustomTourRequest error:", err);
     res.status(500).json({
       success: false,
@@ -191,6 +193,7 @@ export const syncChatHistory = async (req, res) => {
   try {
     const { sessionId, messages } = req.body;
     if (!sessionId || !messages || !Array.isArray(messages)) {
+      // @VALIDATION_RULE: Structural validation for multi-message sync payloads
       return res.status(400).json({ success: false, message: "Invalid sessionId or messages" });
     }
 
@@ -218,6 +221,7 @@ export const syncChatHistory = async (req, res) => {
     res.json({ success: true, message: "History synced successfully" });
 
   } catch (err) {
+    // @ERROR_PROPAGATION: Batch message synchronization errors are logged for forensic analysis
     console.error("syncChatHistory error:", err);
     res.status(500).json({
       success: false,

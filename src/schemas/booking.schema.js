@@ -1,3 +1,5 @@
+import { body, param, query } from 'express-validator';
+
 /**
  * Tour Booking Validation Schemas
  * 
@@ -62,3 +64,4 @@ export const bookingSchemas = {
       .isAlphanumeric().withMessage('Passport number must be alphanumeric')
   ]
 };
+
