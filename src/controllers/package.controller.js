@@ -1,23 +1,24 @@
 import db from "../config/db.js";
 import pricingService from "../services/pricing.service.js";
+import cacheService from "../services/cache.service.js";
+
+// Cache TTL for the public packages listing (seconds)
+const PACKAGES_CACHE_TTL = 60;
+
+// Cache key prefix — all variants share this prefix so we can bulk-invalidate
+export const PACKAGES_CACHE_PREFIX = "packages:";
 
 /**
  * Retrieves all active tour packages with optional filtering and pagination.
  * Calculates dynamic "From" pricing based on the current season for each package.
  * 
+ * OPTIMIZATIONS applied:
+ * - Single SQL query with COUNT(*) OVER() window function (eliminates second round-trip)
+ * - Pricing rules fetched once; all packages priced synchronously (eliminates N DB calls)
+ * - Full response cached in-memory for 60 seconds keyed by filter params
+ * 
  * @async
  * @function getAllPackages
- * @param {Object} req - Express request object.
- * @param {Object} req.query - Query parameters.
- * @param {string} [req.query.category] - Filter by category (Cultural, Beach, etc.).
- * @param {string} [req.query.budget] - Filter by budget level ('budget', 'mid', 'luxury').
- * @param {number} [req.query.min_price] - Minimum base price.
- * @param {number} [req.query.max_price] - Maximum base price.
- * @param {string} [req.query.search] - Search term for name/description.
- * @param {number} [req.query.limit=50] - Number of records per page.
- * @param {number} [req.query.offset=0] - Pagination offset.
- * @param {Object} res - Express response object.
- * @returns {Promise<void>} Sends a JSON response with filtered packages and total count.
  */
 export const getAllPackages = async (req, res) => {
   const {
@@ -30,7 +31,17 @@ export const getAllPackages = async (req, res) => {
     offset = 0
   } = req.query;
 
+  // Build a stable cache key from the incoming filters
+  const cacheKey = `${PACKAGES_CACHE_PREFIX}${JSON.stringify({ category, budget, min_price, max_price, search, limit, offset })}`;
+
+  // 1️⃣ Serve from cache if available
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return res.json(cached);
+  }
+
   try {
+    // 2️⃣ Build query — COUNT(*) OVER() returns total count alongside every row
     let query = `
       SELECT 
         package_id,
@@ -44,7 +55,8 @@ export const getAllPackages = async (req, res) => {
         rating,
         image,
         season_type,
-        coast_type
+        coast_type,
+        COUNT(*) OVER() AS total_count
       FROM tour_packages
       WHERE is_active = true
     `;
@@ -52,104 +64,71 @@ export const getAllPackages = async (req, res) => {
     const params = [];
     let paramIndex = 1;
 
-    // Filter by category
     if (category) {
       query += ` AND category = $${paramIndex}`;
       params.push(category);
       paramIndex++;
     }
-
-    // Filter by budget
     if (budget) {
       query += ` AND budget = $${paramIndex}`;
       params.push(budget);
       paramIndex++;
     }
-
-    // Filter by minimum price
     if (min_price) {
       query += ` AND base_price >= $${paramIndex}`;
       params.push(parseFloat(min_price));
       paramIndex++;
     }
-
-    // Filter by maximum price
     if (max_price) {
       query += ` AND base_price <= $${paramIndex}`;
       params.push(parseFloat(max_price));
       paramIndex++;
     }
-
-    // Search by name or description (case-insensitive)
     if (search) {
       query += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
-    // Order by rating DESC, then price ASC
     query += ` ORDER BY rating DESC, base_price ASC`;
-
-    // Pagination
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(parseInt(limit), parseInt(offset));
 
+    // 3️⃣ Single DB call for rows + total count
     const result = await db.query(query, params);
+    const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
 
-    // Get total count for pagination
-    let countQuery = `SELECT COUNT(*) FROM tour_packages WHERE is_active = true`;
-    const countParams = [];
-    let countParamIndex = 1;
-
-    if (category) {
-      countQuery += ` AND category = $${countParamIndex}`;
-      countParams.push(category);
-      countParamIndex++;
-    }
-    if (budget) {
-      countQuery += ` AND budget = $${countParamIndex}`;
-      countParams.push(budget);
-      countParamIndex++;
-    }
-    if (min_price) {
-      countQuery += ` AND base_price >= $${countParamIndex}`;
-      countParams.push(parseFloat(min_price));
-      countParamIndex++;
-    }
-    if (max_price) {
-      countQuery += ` AND base_price <= $${countParamIndex}`;
-      countParams.push(parseFloat(max_price));
-      countParamIndex++;
-    }
-    if (search) {
-      countQuery += ` AND (name ILIKE $${countParamIndex} OR description ILIKE $${countParamIndex})`;
-      countParams.push(`%${search}%`);
-    }
-
-    const countResult = await db.query(countQuery, countParams);
-    const totalCount = parseInt(countResult.rows[0].count);
-
-    // Calculate dynamic "From" price for each package (using today's date)
+    // 4️⃣ Fetch ALL pricing rules ONCE (one DB call regardless of row count)
     const today = new Date();
-    const packagesWithPricing = await Promise.all(result.rows.map(async (pkg) => {
-      const pricing = await pricingService.calculateDynamicPrice(
-        { ...pkg, base_price: pkg.price }, // pkg.price is aliased base_price
-        today
+    const pricingRules = await pricingService.getAllRules();
+
+    // 5️⃣ Apply pricing synchronously — zero additional DB calls
+    const packagesWithPricing = result.rows.map((pkg) => {
+      const pricing = pricingService.calculateDynamicPriceSync(
+        { ...pkg, base_price: pkg.price },
+        today,
+        pricingRules
       );
       return {
         ...pkg,
+        total_count: undefined, // strip window column from output
         currentPrice: pricing.pricePerPerson,
         seasonLabel: pricing.seasonLabel,
-        isDynamic: pkg.season_type !== 'year_round'
+        isDynamic: pkg.season_type !== 'year_round',
       };
-    }));
+    });
 
-    res.json({
+    const payload = {
       success: true,
       count: packagesWithPricing.length,
       total: totalCount,
-      packages: packagesWithPricing
-    });
+      packages: packagesWithPricing,
+    };
+
+    // 6️⃣ Store in cache
+    cacheService.set(cacheKey, payload, PACKAGES_CACHE_TTL);
+
+    res.json(payload);
 
   } catch (err) {
     // @ERROR_PROPAGATION: Caught and sent to the global error middleware in server.js
@@ -160,6 +139,7 @@ export const getAllPackages = async (req, res) => {
     });
   }
 };
+
 
 /**
  * Retrieves full details for a single tour package by its ID.

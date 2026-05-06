@@ -123,7 +123,104 @@ const pricingService = {
             'SELECT * FROM seasonal_pricing_rules ORDER BY start_month, start_day'
         );
         return result.rows;
-    }
+    },
+
+    /**
+     * Synchronous pricing calculation using a pre-fetched rules array.
+     * Eliminates the need for a DB query per package when pricing a list.
+     * Used by getAllPackages to avoid N+1 database calls.
+     *
+     * @function calculateDynamicPriceSync
+     * @param {Object} pkg - Package with base_price and coast_type.
+     * @param {string|Date} travelDate - The travel date to price for.
+     * @param {Array<Object>} rules - Pre-fetched active pricing rules from getAllRules().
+     * @param {number} [adults=1] - Number of adult travelers.
+     * @param {number} [children=0] - Number of child travelers.
+     * @returns {Object} Pricing breakdown identical to calculateDynamicPrice.
+     */
+    calculateDynamicPriceSync: (pkg, travelDate, rules = [], adults = 1, children = 0) => {
+        try {
+            const date = new Date(travelDate);
+            const month = date.getMonth() + 1; // 1-12
+            const day = date.getDate();        // 1-31
+            const coastType = pkg.coast_type || 'all';
+
+            let percentageAdjustment = 0;
+            let seasonLabel = 'Standard Rate';
+            let appliedRuleId = null;
+
+            // Filter and find the most specific matching active rule in JS
+            const activeRules = rules.filter(r => r.is_active && (r.coast_type === 'all' || r.coast_type === coastType));
+
+            const matchingRule = activeRules
+                .filter(r => {
+                    const sm = r.start_month, sd = r.start_day, em = r.end_month, ed = r.end_day;
+                    const isNormal = sm < em || (sm === em && sd <= ed);
+                    if (isNormal) {
+                        return (month > sm || (month === sm && day >= sd)) &&
+                               (month < em || (month === em && day <= ed));
+                    } else {
+                        // Wrap-around range (e.g. Dec -> Jan)
+                        return (month > sm || (month === sm && day >= sd)) ||
+                               (month < em || (month === em && day <= ed));
+                    }
+                })
+                // Prefer coast-specific rules, then highest magnitude
+                .sort((a, b) => {
+                    if (a.coast_type === coastType && b.coast_type !== coastType) return -1;
+                    if (b.coast_type === coastType && a.coast_type !== coastType) return 1;
+                    return Math.abs(b.percentage) - Math.abs(a.percentage);
+                })[0];
+
+            if (matchingRule) {
+                percentageAdjustment = parseFloat(matchingRule.percentage);
+                seasonLabel = matchingRule.name;
+                appliedRuleId = matchingRule.rule_id;
+            }
+
+            const basePrice = parseFloat(pkg.base_price);
+            const multiplier = 1 + (percentageAdjustment / 100);
+            const adultPrice = basePrice * multiplier;
+            const childPrice = adultPrice * 0.5;
+
+            const totalAdultCost = adultPrice * parseInt(adults);
+            const totalChildCost = childPrice * parseInt(children);
+            const totalPrice = totalAdultCost + totalChildCost;
+            const totalTravelers = parseInt(adults) + parseInt(children);
+
+            return {
+                basePrice: parseFloat(basePrice.toFixed(2)),
+                adultPrice: parseFloat(adultPrice.toFixed(2)),
+                childPrice: parseFloat(childPrice.toFixed(2)),
+                totalPrice: parseFloat(totalPrice.toFixed(2)),
+                adults: parseInt(adults),
+                children: parseInt(children),
+                totalTravelers,
+                seasonLabel,
+                percentageAdjustment,
+                multiplier: parseFloat(multiplier.toFixed(4)),
+                appliedRuleId,
+                pricePerPerson: parseFloat(adultPrice.toFixed(2)),
+            };
+        } catch (error) {
+            console.error("Error in calculateDynamicPriceSync:", error.message);
+            const basePrice = parseFloat(pkg.base_price || 0);
+            return {
+                basePrice,
+                adultPrice: basePrice,
+                childPrice: basePrice * 0.5,
+                totalPrice: basePrice * parseInt(adults) + basePrice * 0.5 * parseInt(children),
+                adults: parseInt(adults),
+                children: parseInt(children),
+                totalTravelers: parseInt(adults) + parseInt(children),
+                seasonLabel: 'Standard Rate',
+                percentageAdjustment: 0,
+                multiplier: 1.0,
+                appliedRuleId: null,
+                pricePerPerson: basePrice,
+            };
+        }
+    },
 };
 
 export default pricingService;

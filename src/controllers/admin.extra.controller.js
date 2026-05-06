@@ -2,6 +2,8 @@ import db from "../config/db.js";
 import { sendEmail, emailTemplates } from "../utils/sendEmail.js";
 import { NotificationService } from "../utils/notificationService.js";
 import { recordAuditLog } from "../utils/auditLogger.js";
+import cacheService from "../services/cache.service.js";
+import { PACKAGES_CACHE_PREFIX } from "./package.controller.js";
 
 /**
  * Retrieves comprehensive dashboard statistics including user counts, booking status,
@@ -226,6 +228,9 @@ export const createPackage = async (req, res) => {
       description: `Created new tour package: ${newPackage.name}`
     });
 
+    // Invalidate public packages cache so the new package appears immediately
+    cacheService.invalidatePrefix(PACKAGES_CACHE_PREFIX);
+
     res.status(201).json({
       success: true,
       message: "Package created successfully",
@@ -339,6 +344,9 @@ export const updatePackage = async (req, res) => {
       description: `Updated tour package: ${updatedPackage.name}`
     });
 
+    // Invalidate public packages cache so the update is visible immediately
+    cacheService.invalidatePrefix(PACKAGES_CACHE_PREFIX);
+
     res.json({
       success: true,
       message: "Package updated successfully",
@@ -378,6 +386,9 @@ export const deletePackage = async (req, res) => {
         message: "Package not found"
       });
     }
+
+    // Invalidate public packages cache so deleted package is no longer served
+    cacheService.invalidatePrefix(PACKAGES_CACHE_PREFIX);
 
     res.json({
       success: true,
@@ -705,6 +716,105 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
+
+/**
+ * Deletes a user account and all associated profile data from the system.
+ * Admin accounts cannot be deleted via this endpoint.
+ * 
+ * @async
+ * @function deleteUser
+ */
+export const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Prevent deleting self
+    if (req.user.user_id === userId) {
+      return res.status(400).json({ success: false, message: "You cannot delete your own account" });
+    }
+
+    // Check user exists and is not an admin
+    const userCheck = await db.query('SELECT role FROM users WHERE user_id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    if (userCheck.rows[0].role === 'admin') {
+      return res.status(403).json({ success: false, message: "Admin accounts cannot be deleted via this endpoint" });
+    }
+
+    await db.query('DELETE FROM users WHERE user_id = $1', [userId]);
+
+    await recordAuditLog(req, {
+      actionType: 'DELETE_USER',
+      targetType: 'USER',
+      targetId: userId,
+      description: `Deleted user account ${userId}`
+    });
+
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (err) {
+    console.error("deleteUser error:", err);
+    res.status(500).json({ success: false, message: "Failed to delete user", error: err.message });
+  }
+};
+
+/**
+ * Creates a new tourist user account manually by an admin.
+ * Sets the account as active and email_verified immediately.
+ * 
+ * @async
+ * @function createUser
+ */
+export const createUser = async (req, res) => {
+  try {
+    const { email, password, full_name, phone } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required" });
+    }
+
+    // Check if email already exists
+    const existing = await db.query('SELECT user_id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ success: false, message: "An account with this email already exists" });
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.default.hash(password, 12);
+
+    // Create user
+    const userResult = await db.query(`
+      INSERT INTO users (email, password_hash, role, status, email_verified, created_at)
+      VALUES ($1, $2, 'tourist', 'active', true, NOW())
+      RETURNING user_id, email, role, status, created_at
+    `, [email, hashedPassword]);
+
+    const newUser = userResult.rows[0];
+
+    // Create tourist profile
+    await db.query(`
+      INSERT INTO tourist (user_id, full_name, phone)
+      VALUES ($1, $2, $3)
+    `, [newUser.user_id, full_name || null, phone || null]);
+
+    await recordAuditLog(req, {
+      actionType: 'CREATE_USER',
+      targetType: 'USER',
+      targetId: newUser.user_id,
+      description: `Admin created tourist account for ${email}`
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      user: { ...newUser, full_name: full_name || null }
+    });
+  } catch (err) {
+    console.error("createUser error:", err);
+    res.status(500).json({ success: false, message: "Failed to create user", error: err.message });
+  }
+};
+
 
 /**
  * Updates a user's status and logs the action in the audit log.
