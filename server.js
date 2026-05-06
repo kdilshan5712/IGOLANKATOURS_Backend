@@ -93,7 +93,8 @@ app.use(xss());
 
 // 2. Restrict CORS to the known frontend origin
 const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
   "https://www.igolankatours.com",
   "https://igolankatours.com",
   "https://api-backend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io",
@@ -101,7 +102,7 @@ const allowedOrigins = [
   "http://localhost:5174",
   "http://localhost:5175",
   "http://localhost:3000",
-];
+].filter(Boolean);
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, curl, Postman)

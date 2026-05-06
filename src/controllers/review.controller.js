@@ -220,23 +220,31 @@ export const getReviewsForGallery = async (req, res) => {
  */
 export const submitReview = async (req, res) => {
   try {
-    let { packageId, rating, title, comment } = req.body;
+    let { packageId, rating, title, comment, reviewType } = req.body;
     const userId = req.user.user_id;
     const files = req.files;
 
     if (typeof rating === 'string') rating = parseInt(rating, 10);
     
-    // Package reviews MUST have a valid packageId
-    if (!packageId || packageId === 'null') {
-      return res.status(400).json({ success: false, message: "Package ID is required" });
-    }
+    const type = reviewType || 'tour';
+    let finalPackageId = packageId;
+    let finalBookingId = null;
 
-    if (typeof packageId === 'string') packageId = packageId.trim();
-    
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(packageId)) {
-      return res.status(400).json({ success: false, message: "Invalid package ID format" });
+    if (type === 'tour') {
+      // Package reviews MUST have a valid packageId
+      if (!packageId || packageId === 'null') {
+        return res.status(400).json({ success: false, message: "Package ID is required" });
+      }
+
+      if (typeof packageId === 'string') finalPackageId = packageId.trim();
+      
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(finalPackageId)) {
+        return res.status(400).json({ success: false, message: "Invalid package ID format" });
+      }
+    } else if (type === 'website') {
+      finalPackageId = null;
     }
 
     // Validation
@@ -253,23 +261,25 @@ export const submitReview = async (req, res) => {
       return res.status(403).json({ success: false, message: "Only tourists can submit reviews" });
     }
 
-    // Booking validation
-    const bookingCheck = await db.query(`
-      SELECT b.booking_id FROM bookings b
-      WHERE b.user_id = $1 AND b.package_id = $2 AND b.status = 'confirmed'
-      ORDER BY b.created_at DESC LIMIT 1
-    `, [userId, packageId]);
+    if (type === 'tour') {
+      // Booking validation
+      const bookingCheck = await db.query(`
+        SELECT b.booking_id FROM bookings b
+        WHERE b.user_id = $1 AND b.package_id = $2 AND b.status = 'confirmed'
+        ORDER BY b.created_at DESC LIMIT 1
+      `, [userId, finalPackageId]);
 
-    if (bookingCheck.rows.length === 0) {
-      return res.status(403).json({ success: false, message: "You can only review packages you have booked" });
-    }
+      if (bookingCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, message: "You can only review packages you have booked" });
+      }
 
-    const bookingId = bookingCheck.rows[0].booking_id;
+      finalBookingId = bookingCheck.rows[0].booking_id;
 
-    // Duplicate check
-    const existingReview = await db.query('SELECT review_id FROM reviews WHERE booking_id = $1', [bookingId]);
-    if (existingReview.rows.length > 0) {
-      return res.status(409).json({ success: false, message: "You have already reviewed this booking" });
+      // Duplicate check
+      const existingReview = await db.query('SELECT review_id FROM reviews WHERE booking_id = $1', [finalBookingId]);
+      if (existingReview.rows.length > 0) {
+        return res.status(409).json({ success: false, message: "You have already reviewed this booking" });
+      }
     }
 
     // Handle Image Uploads
@@ -285,7 +295,7 @@ export const submitReview = async (req, res) => {
       INSERT INTO reviews (user_id, package_id, booking_id, rating, title, comment, images, status, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW())
       RETURNING *
-    `, [userId, packageId, bookingId, rating, title || null, comment, imageUrls.length > 0 ? imageUrls : null]);
+    `, [userId, finalPackageId, finalBookingId, rating, title || null, comment, imageUrls.length > 0 ? imageUrls : null]);
 
     const review = result.rows[0];
 

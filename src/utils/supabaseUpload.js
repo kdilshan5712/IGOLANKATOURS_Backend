@@ -5,6 +5,8 @@
  * Folder structure: reviews/user-uploads/<user_id>/
  */
 
+import supabase from '../config/supabase.js';
+
 /**
  * Uploads multiple review images to Supabase Storage.
  * Generates unique filenames for each upload and organizes them by user ID.

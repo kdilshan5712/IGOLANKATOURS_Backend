@@ -39,6 +39,8 @@ import {
    updateBookingStatus,
    getAllUsers,
    updateUserStatus,
+   deleteUser,
+   createUser,
    markMessageAsRead,
    getCustomTourRequests,
    updateCustomTourStatus,
@@ -103,7 +105,9 @@ router.delete("/packages/:packageId", deletePackage);
    USERS MANAGEMENT
    ====================================================== */
 router.get("/users", getAllUsers);
+router.post("/users", createUser);
 router.patch("/users/:userId/status", updateUserStatus);
+router.delete("/users/:userId", deleteUser);
 
 /* ======================================================
    CONTACT MESSAGES
