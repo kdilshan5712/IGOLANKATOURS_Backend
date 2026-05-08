@@ -93,7 +93,10 @@ export const authorize = (...allowedRoles) => {
     }
 
     // Check if user's role from JWT is in allowed roles
-    if (!allowedRoles.includes(req.user.role)) {
+    const hasRequiredRole = allowedRoles.includes(req.user.role);
+    const isSuperAdminAccessingAdmin = req.user.role === "superadmin" && allowedRoles.includes("admin");
+
+    if (!hasRequiredRole && !isSuperAdminAccessingAdmin) {
       return res.status(403).json({
         message: `Access denied. Required role: ${allowedRoles.join(" or ")}. Your role: ${req.user.role}`
       });
