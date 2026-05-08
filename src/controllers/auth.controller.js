@@ -401,7 +401,7 @@ export const login = async (req, res) => {
         });
       }
       profile = profileResult.rows[0];
-    } else if (user.role === "admin") {
+    } else if (user.role === "admin" || user.role === "superadmin") {
       // Admins might not have a record in the 'admin' table if it's a legacy account
       // so we try to get the photo but don't fail if the table/record is missing
       try {
@@ -440,7 +440,7 @@ export const login = async (req, res) => {
     }
 
     // Enforce email verification (Admins are exempt as legacy accounts may lack this)
-    if (user.role !== "admin" && user.email_verified === false) {
+    if (user.role !== "admin" && user.role !== "superadmin" && user.email_verified === false) {
       return res.status(403).json({
         message: "Please verify your email address before logging in.",
         requiresVerification: true
