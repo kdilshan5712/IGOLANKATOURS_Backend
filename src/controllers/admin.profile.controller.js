@@ -34,7 +34,7 @@ export const getAdminProfile = async (req, res) => {
           a.profile_photo
         FROM users u
         LEFT JOIN admin a ON u.user_id = a.user_id
-        WHERE u.user_id = $1 AND u.role = 'admin'`,
+        WHERE u.user_id = $1 AND u.role IN ('admin', 'superadmin')`,
         [user_id]
       ),
       timeoutPromise
@@ -111,7 +111,10 @@ export const getAdminProfile = async (req, res) => {
  */
 export const createAdmin = async (req, res) => {
   try {
-    const { email, password, full_name } = req.body;
+    const { email, password, full_name, role } = req.body;
+    
+    // Only superadmin can create a superadmin
+    const targetRole = (role === 'superadmin' && req.user.role === 'superadmin') ? 'superadmin' : 'admin';
 
     // Validate required fields
     if (!email || !password) {
@@ -160,9 +163,9 @@ export const createAdmin = async (req, res) => {
     // Create admin user
     const result = await db.query(
       `INSERT INTO users (email, password_hash, role, status, email_verified)
-       VALUES ($1, $2, 'admin', 'active', true)
+       VALUES ($1, $2, $3, 'active', true)
        RETURNING user_id, email, role, status, created_at`,
-      [normalizedEmail, passwordHash]
+      [normalizedEmail, passwordHash, targetRole]
     );
 
     const newAdmin = result.rows[0];
@@ -210,7 +213,7 @@ export const getAllAdmins = async (req, res) => {
         email_verified,
         created_at
       FROM users 
-      WHERE role = 'admin'
+      WHERE role IN ('admin', 'superadmin')
       ORDER BY created_at DESC`
     );
 
@@ -226,6 +229,71 @@ export const getAllAdmins = async (req, res) => {
       success: false,
       message: "Failed to fetch admin accounts"
     });
+  }
+};
+
+/**
+ * Updates the status (active/suspended) of an administrative account.
+ * Requires superadmin role. Cannot modify self.
+ */
+export const updateAdminStatus = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { status } = req.body;
+
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: "Only super admins can modify admin status" });
+    }
+    
+    if (req.user.user_id === adminId) {
+      return res.status(400).json({ success: false, message: "You cannot change your own status" });
+    }
+
+    const result = await db.query(
+      `UPDATE users SET status = $1 WHERE user_id = $2 AND role IN ('admin', 'superadmin') RETURNING user_id, email, status`,
+      [status, adminId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+
+    res.json({ success: true, message: "Admin status updated successfully", admin: result.rows[0] });
+  } catch (error) {
+    console.error("updateAdminStatus error:", error);
+    res.status(500).json({ success: false, message: "Failed to update status" });
+  }
+};
+
+/**
+ * Permanently deletes an administrative account.
+ * Requires superadmin role. Cannot delete self.
+ */
+export const deleteAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: "Only super admins can delete admin accounts" });
+    }
+    
+    if (req.user.user_id === adminId) {
+      return res.status(400).json({ success: false, message: "You cannot delete your own account" });
+    }
+
+    const result = await db.query(
+      `DELETE FROM users WHERE user_id = $1 AND role IN ('admin', 'superadmin') RETURNING user_id`,
+      [adminId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+
+    res.json({ success: true, message: "Admin deleted successfully" });
+  } catch (error) {
+    console.error("deleteAdmin error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete admin" });
   }
 };
 

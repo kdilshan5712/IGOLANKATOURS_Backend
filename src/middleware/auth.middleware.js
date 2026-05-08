@@ -121,7 +121,7 @@ export const authorize = (...allowedRoles) => {
           FROM users u 
           LEFT JOIN tour_guide g ON u.user_id = g.user_id 
           WHERE u.user_id = $1`;
-      } else if (req.user.role === "admin") {
+      } else if (req.user.role === "admin" || req.user.role === "superadmin") {
         query = `
           SELECT u.role, u.status, a.user_id as profile_id 
           FROM users u 

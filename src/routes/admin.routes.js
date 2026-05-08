@@ -69,7 +69,7 @@ import { validate } from "../middleware/validation.middleware.js";
 const router = express.Router();
 
 // All admin routes are protected
-router.use(authenticate, authorize("admin"));
+router.use(authenticate, authorize("admin", "superadmin"));
 
 /* ======================================================
    ADMIN PROFILE
@@ -83,6 +83,10 @@ router.delete("/profile-photo", deleteProfilePhoto);
    ====================================================== */
 router.post("/admins", createAdmin);
 router.get("/admins", getAllAdmins);
+
+import { updateAdminStatus, deleteAdmin } from "../controllers/admin.profile.controller.js";
+router.patch("/admins/:adminId/status", updateAdminStatus);
+router.delete("/admins/:adminId", deleteAdmin);
 
 // Guide document approval routes (admin only)
 router.get("/guide-documents", getAllGuideDocuments);
