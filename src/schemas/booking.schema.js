@@ -59,9 +59,60 @@ export const bookingSchemas = {
       .isLength({ min: 2 }).withMessage('Traveller name must be at least 2 characters'),
       
     body('travellers.*.passport_number')
-      .optional({ checkFalsy: true })
       .trim()
-      .isAlphanumeric().withMessage('Passport number must be alphanumeric')
+      .notEmpty().withMessage('Passport number is required')
+      .isAlphanumeric().withMessage('Passport number must be alphanumeric'),
+
+    body('travellers.*.passport_expiry')
+      .notEmpty().withMessage('Passport expiry date is required')
+      .isISO8601().withMessage('Invalid passport expiry date format')
+      .custom((value, { req }) => {
+        const travelDate = new Date(req.body.travel_date);
+        const passportExpiry = new Date(value);
+        const minExpiry = new Date(travelDate);
+        minExpiry.setMonth(minExpiry.getMonth() + 6);
+        if (passportExpiry < minExpiry) {
+          throw new Error('Passport must be valid for at least 6 months after travel date');
+        }
+        return true;
+      }),
+
+    body('travellers.*.nationality')
+      .trim()
+      .notEmpty().withMessage('Nationality is required'),
+
+    body('travellers.*.date_of_birth')
+      .notEmpty().withMessage('Date of birth is required')
+      .isISO8601().withMessage('Invalid date of birth format')
+      .custom((value, { req, path }) => {
+        const travelDate = new Date(req.body.travel_date);
+        const dob = new Date(value);
+        
+        let age = travelDate.getFullYear() - dob.getFullYear();
+        const monthDiff = travelDate.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && travelDate.getDate() < dob.getDate())) {
+          age--;
+        }
+        
+        const index = parseInt(path.match(/\d+/)[0]);
+        const adults = parseInt(req.body.adults || 0);
+        const traveler = req.body.travellers[index];
+        const type = (traveler?.type || (index < adults ? 'adult' : 'child')).toLowerCase();
+        
+        if (type === 'adult' || type === 'adults') {
+          if (age < 18) {
+            throw new Error(`Traveller ${index + 1} is listed as an Adult but is ${age} years old (must be 18 or older on travel date)`);
+          }
+        } else {
+          if (age >= 18) {
+            throw new Error(`Traveller ${index + 1} is listed as a Child but is ${age} years old (must be under 18 on travel date)`);
+          }
+          if (age < 2) {
+            throw new Error(`Traveller ${index + 1} is listed as a Child but is ${age} years old (must be 2 or older on travel date)`);
+          }
+        }
+        return true;
+      })
   ]
 };
 

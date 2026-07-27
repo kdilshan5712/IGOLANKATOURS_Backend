@@ -6,6 +6,7 @@
  */
 
 import supabase from '../config/supabase.js';
+import sharp from 'sharp';
 
 /**
  * Uploads multiple review images to Supabase Storage.
@@ -26,18 +27,23 @@ export const uploadReviewImages = async (files, userId) => {
   try {
     const uploadPromises = files.map(async (file) => {
       // Generate unique filename using crypto
-      const fileExt = file.originalname.split('.').pop();
       const uniqueId = crypto.randomUUID();
-      const fileName = `${uniqueId}.${fileExt}`;
+      const fileName = `${uniqueId}.webp`; // Always save as optimized WebP
       const filePath = `user-uploads/${userId}/${fileName}`;
 
-      console.log(`📤 Uploading to: reviews/${filePath}`);
+      console.log(`📤 Optimizing & Uploading to: reviews/${filePath}`);
+
+      // Compress and resize the image using sharp
+      const optimizedBuffer = await sharp(file.buffer)
+        .resize({ width: 1920, withoutEnlargement: true }) // Prevent upscaling small images
+        .webp({ quality: 80 }) // 80% quality WebP compression
+        .toBuffer();
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('reviews')
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype,
+        .upload(filePath, optimizedBuffer, {
+          contentType: 'image/webp',
           upsert: false
         });
 

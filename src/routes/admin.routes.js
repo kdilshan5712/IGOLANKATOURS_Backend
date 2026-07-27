@@ -62,6 +62,12 @@ import {
     deleteCoupon 
 } from "../controllers/admin.coupon.controller.js";
 import { getAdminFaqs, createFaq, updateFaq, deleteFaq } from "../controllers/faq.controller.js";
+import { 
+    getAllPromotions, 
+    createPromotion, 
+    updatePromotion, 
+    deletePromotion 
+} from "../controllers/admin.promotions.controller.js";
 import { managementSchemas } from "../schemas/admin.management.schema.js";
 import { validate } from "../middleware/validation.middleware.js";
 
@@ -195,8 +201,15 @@ router.delete("/faqs/:id", deleteFaq);
     ====================================================== */
 router.get("/coupons", getAllCoupons);
 router.post("/coupons", managementSchemas.coupons.create, validate, createCoupon);
-router.put("/coupons/:id", managementSchemas.coupons.create, validate, updateCoupon); // Reuse create for full update or create partial update schema
+router.put("/coupons/:id", managementSchemas.coupons.update, validate, updateCoupon);
 router.delete("/coupons/:id", deleteCoupon);
 
+/* ======================================================
+    PROMOTIONS & BANNERS MANAGEMENT
+    ====================================================== */
+router.get("/promotions", getAllPromotions);
+router.post("/promotions", createPromotion);
+router.put("/promotions/:id", updatePromotion);
+router.delete("/promotions/:id", deletePromotion);
 
 export default router;

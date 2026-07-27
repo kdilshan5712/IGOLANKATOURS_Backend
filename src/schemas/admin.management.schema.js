@@ -78,25 +78,53 @@ export const managementSchemas = {
 
   // @VALIDATION_RULE: Coupon Management
   coupons: {
+    // Used for POST /admin/coupons (create)
     create: [
       body('code')
         .trim()
         .notEmpty().withMessage('Coupon code is required')
-        .isAlphanumeric().withMessage('Code must be alphanumeric')
+        // Allow letters, numbers, hyphens, and underscores (e.g. SUMMER-25, VIP_2026)
+        .matches(/^[A-Z0-9_-]+$/i).withMessage('Code must contain only letters, numbers, hyphens, or underscores')
         .isLength({ min: 3, max: 20 }).withMessage('Code must be 3-20 characters'),
-      
-      body('discount_type').isIn(['percentage', 'fixed']),
-      body('discount_value').isFloat({ min: 0.01 }),
-      
+
+      body('discount_type')
+        .isIn(['percentage', 'fixed']).withMessage('Discount type must be percentage or fixed'),
+
+      body('discount_value')
+        .isFloat({ min: 0.01 }).withMessage('Discount value must be a positive number'),
+
       body('expiry_date')
         .optional({ checkFalsy: true })
         .isISO8601().withMessage('Invalid date format')
-        .custom((value, { req }) => {
+        .custom((value) => {
           if (new Date(value) <= new Date()) {
             throw new Error('Expiry date must be in the future');
           }
           return true;
         })
+    ],
+
+    // Used for PUT /admin/coupons/:id (update) — only editable fields validated
+    update: [
+      body('is_active')
+        .optional()
+        .isBoolean().withMessage('is_active must be a boolean'),
+
+      body('expiry_date')
+        .optional({ checkFalsy: true })
+        .isISO8601().withMessage('Invalid date format'),
+
+      body('usage_limit')
+        .optional({ checkFalsy: true })
+        .isInt({ min: 1 }).withMessage('Usage limit must be a positive integer'),
+
+      body('min_amount')
+        .optional({ checkFalsy: true })
+        .isFloat({ min: 0 }).withMessage('Min amount must be 0 or more'),
+
+      body('max_discount')
+        .optional({ checkFalsy: true })
+        .isFloat({ min: 0 }).withMessage('Max discount must be 0 or more')
     ]
   }
 };

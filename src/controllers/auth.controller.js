@@ -19,19 +19,21 @@ import {
 const REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
 const setRefreshTokenCookie = (res, token) => {
+  const isProduction = process.env.NODE_ENV === "production";
   res.cookie(REFRESH_TOKEN_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProduction,            // must be true for sameSite:'none'
+    sameSite: isProduction ? "none" : "lax", // 'none' required for cross-origin (igolankatours.com → Azure backend)
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
 const clearRefreshTokenCookie = (res) => {
+  const isProduction = process.env.NODE_ENV === "production";
   res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
   });
 };
 

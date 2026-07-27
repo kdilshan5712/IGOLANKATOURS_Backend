@@ -10,6 +10,7 @@ import { authenticate, authorize } from "../middleware/auth.middleware.js";
 import {
   createBooking,
   getMyBookings,
+  getBookingById,
   cancelBooking,
   downloadInvoice,
   convertCustomToBooking,
@@ -70,6 +71,14 @@ router.get(
   authenticate,
   authorize("tourist"),
   downloadInvoice
+);
+
+// Get single booking by ID (tourist only - must own the booking)
+router.get(
+  "/:id",
+  authenticate,
+  authorize("tourist"),
+  getBookingById
 );
 
 export default router;

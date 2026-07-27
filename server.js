@@ -37,11 +37,15 @@ import aiRoutes from "./src/routes/ai.routes.js";
 import galleryRoutes from "./src/routes/gallery.routes.js";
 import couponsRoutes from "./src/routes/coupons.routes.js";
 import adminAuditRoutes from "./src/routes/admin.audit.routes.js";
+import promotionsRoutes from "./src/routes/promotions.routes.js";
 
 
 console.log("🔄 [SERVER] Routes loaded - Version 4.0 (Security Hardened + AI Agent)");
 
 const app = express();
+
+// Trust proxy for secure rate limiting behind Azure ingress/proxies
+app.set("trust proxy", 1);
 
 /* -------------------- SECURITY MIDDLEWARE -------------------- */
 
@@ -64,8 +68,7 @@ app.use(helmet({
         "https://igolankatours.com",
         "https://*.igolankatours.com",
         "https://api-backend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io",
-        "https://web-frontend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io",
-        "https://overbridgenet.com"
+        "https://web-frontend.wonderfulsmoke-82355efd.centralindia.azurecontainerapps.io"
       ],
       "frame-ancestors": ["'none'"], // Prevent clickjacking
     },
@@ -254,6 +257,9 @@ app.use("/api/coupons", couponsRoutes);
 
 // Admin Audit Logs
 app.use("/api/admin/audit-logs", adminAuditRoutes);
+
+// Promotions (public viewing)
+app.use("/api/promotions", promotionsRoutes);
 
 
 // AI Agent — proxy to Python FastAPI microservice on port 8000

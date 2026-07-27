@@ -12,7 +12,10 @@ import {
     processRefund,
     getPaymentHistory,
     webhookHandler,
-    processDummyPayment
+    processDummyPayment,
+    generatePayHereHash,
+    payhereWebhook,
+    verifyPayHerePayment
 } from '../controllers/payment.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 
@@ -54,11 +57,24 @@ router.post('/refund', authenticate, processRefund);
 router.get('/history/:userId', authenticate, getPaymentHistory);
 
 /**
- * @route   POST /api/payments/webhook
- * @desc    Stripe webhook endpoint
- * @access  Public (Stripe only)
- * @note    This route should NOT use authenticateToken middleware
+ * @route   POST /api/payments/payhere/hash
+ * @desc    Generate MD5 hash for PayHere checkout
+ * @access  Private
  */
-router.post('/webhook', express.raw({ type: 'application/json' }), webhookHandler);
+router.post('/payhere/hash', authenticate, generatePayHereHash);
+
+/**
+ * @route   POST /api/payments/payhere/webhook
+ * @desc    PayHere webhook endpoint for asynchronous confirmation
+ * @access  Public (PayHere only)
+ */
+router.post('/payhere/webhook', payhereWebhook);
+
+/**
+ * @route   GET /api/payments/payhere/verify/:orderId
+ * @desc    Verify a PayHere payment via REST API using App ID + App Secret
+ * @access  Private
+ */
+router.get('/payhere/verify/:orderId', authenticate, verifyPayHerePayment);
 
 export default router;

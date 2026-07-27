@@ -194,22 +194,46 @@ export const createBooking = async (req, res) => {
     // Start Transaction
     await client.query('BEGIN');
 
-    // Create booking (Only insert columns that exist in the schema)
+    // Create booking with status='pending' — only upgraded to 'confirmed' after payment
+    // succeeds via the PayHere webhook or verifyPayHerePayment endpoint.
     const result = await client.query(
       `INSERT INTO bookings 
        (user_id, package_id, travel_date, travelers, total_price, deposit_amount, balance_amount, status, payment_status, coupon_id, discount_amount, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
        RETURNING *`,
-      [user_id, package_id, travel_date, totalTravelers, total_price, deposit_amount, balance_amount, 'confirmed', 'pending', applied_coupon_id, discount_amount]
+      [user_id, package_id, travel_date, totalTravelers, total_price, deposit_amount, balance_amount, 'pending', 'pending', applied_coupon_id, discount_amount]
     );
 
 
     const booking = result.rows[0];
     const bookingId = booking.booking_id;
 
-    // Note: The original implementation attempted to insert into 'booking_travellers' here,
-    // but the actual DB schema does not have this table. Traveller count is stored 
-    // directly on the bookings table.
+    // Insert travelers into booking_travellers table
+    if (travellers && Array.isArray(travellers)) {
+      const adultsCount = parseInt(adults || 0);
+      for (let i = 0; i < travellers.length; i++) {
+        const t = travellers[i];
+        const fullName = t.full_name || t.fullName;
+        const passportNumber = t.passport_number || t.passportNumber;
+        const passportExpiry = t.passport_expiry || t.passportExpiry;
+        const nationality = t.nationality;
+        const dob = t.date_of_birth || t.dateOfBirth;
+        const isPrimary = i === 0; // First one is primary traveler
+        
+        const tTypeRaw = t.type || (i < adultsCount ? 'Adult' : 'Child');
+        const tType = tTypeRaw.charAt(0).toUpperCase() + tTypeRaw.slice(1).toLowerCase(); // 'Adult' or 'Child'
+        
+        const dietaryRestrictions = t.dietary_restrictions || t.dietaryRestrictions || null;
+        const medicalConditions = t.medical_conditions || t.medicalConditions || null;
+
+        await client.query(
+          `INSERT INTO booking_travellers 
+           (booking_id, full_name, passport_number, passport_expiry, nationality, date_of_birth, type, is_primary, dietary_restrictions, medical_conditions)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [bookingId, fullName, passportNumber, passportExpiry, nationality, dob, tType, isPrimary, dietaryRestrictions, medicalConditions]
+        );
+      }
+    }
 
     // Commit Transaction
     await client.query('COMMIT');
@@ -324,10 +348,83 @@ export const getMyBookings = async (req, res) => {
 };
 
 /**
- * Cancels an existing booking, calculates applicable refunds based on time until travel,
- * updates status, and sends notification emails.
- * 
+ * Retrieves a single booking by its ID, verifying that it belongs to the
+ * authenticated tourist. Returns full payment details needed for the
+ * "Continue Payment" flow on pending bookings.
+ *
  * @async
+ * @function getBookingById
+ * @param {Object} req - Express request object.
+ * @param {Object} req.params - URL parameters.
+ * @param {string} req.params.id - The booking ID.
+ * @param {Object} req.user - Authenticated user object.
+ * @param {string} req.user.user_id - ID of the tourist.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} Sends a JSON response with the booking details.
+ */
+export const getBookingById = async (req, res) => {
+  const { id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    const result = await db.query(
+      `SELECT
+        b.booking_id,
+        b.user_id,
+        b.package_id,
+        b.travel_date,
+        b.travelers,
+        b.total_price,
+        b.deposit_amount,
+        b.balance_amount,
+        b.status,
+        b.payment_status,
+        b.created_at,
+        p.name as package_name,
+        p.duration,
+        p.image,
+        p.category,
+        tg.full_name as guide_name,
+        ug.email as guide_email,
+        tg.contact_number as guide_phone,
+        b.guide_assigned_at
+       FROM bookings b
+       JOIN tour_packages p ON b.package_id = p.package_id
+       LEFT JOIN tour_guide tg ON b.assigned_guide_id = tg.guide_id
+       LEFT JOIN users ug ON tg.user_id = ug.user_id
+       WHERE b.booking_id = $1 AND b.user_id = $2`,
+      [id, user_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const booking = result.rows[0];
+
+    // Fetch traveler details
+    const travellersResult = await db.query(
+      `SELECT id, full_name, passport_number, passport_expiry, nationality, date_of_birth, type, is_primary, dietary_restrictions, medical_conditions
+       FROM booking_travellers 
+       WHERE booking_id = $1
+       ORDER BY is_primary DESC, id ASC`,
+      [id]
+    );
+
+    booking.travellers = travellersResult.rows;
+
+    return res.json({ success: true, booking });
+  } catch (error) {
+    console.error("Error fetching booking by ID:", error);
+    return res.status(500).json({
+      message: "Failed to fetch booking",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Cancels an existing booking, calculates applicable refunds based on time until travel,
  * @function cancelBooking
  * @param {Object} req - Express request object.
  * @param {Object} req.params - URL parameters.
@@ -387,25 +484,38 @@ export const cancelBooking = async (req, res) => {
       });
     }
 
-    // Calculate refund based on cancellation policy
+    // Query completed payments to determine actual amount paid by customer
+    const paymentResult = await db.query(
+      `SELECT COALESCE(SUM(amount), 0) as amount_paid 
+       FROM payments 
+       WHERE booking_id = $1 AND status = 'completed'`,
+      [id]
+    );
+    const amountPaid = parseFloat(paymentResult.rows[0].amount_paid);
+
+    // Calculate cancellation fee based on travel date and official policies
     const travelDate = new Date(booking.travel_date);
     const now = new Date();
     const daysUntilTravel = Math.ceil((travelDate - now) / (1000 * 60 * 60 * 24));
 
-    let refundPercentage = 0;
-    if (daysUntilTravel >= 30) {
-      refundPercentage = 100; // Full refund
-    } else if (daysUntilTravel >= 14) {
-      refundPercentage = 75; // 75% refund
-    } else if (daysUntilTravel >= 7) {
-      refundPercentage = 50; // 50% refund
-    } else if (daysUntilTravel >= 3) {
-      refundPercentage = 25; // 25% refund
+    let feePercentage = 100;
+    if (daysUntilTravel > 60) {
+      feePercentage = 10;
+    } else if (daysUntilTravel >= 45) {
+      feePercentage = 25;
+    } else if (daysUntilTravel >= 30) {
+      feePercentage = 50;
+    } else if (daysUntilTravel >= 15) {
+      feePercentage = 75;
     } else {
-      refundPercentage = 0; // No refund
+      feePercentage = 100;
     }
 
-    const refundAmount = (booking.total_price * refundPercentage) / 100;
+    const totalPrice = parseFloat(booking.total_price);
+    const cancellationFee = amountPaid > 0 ? (totalPrice * feePercentage) / 100 : 0;
+    const refundAmount = Math.max(0, amountPaid - cancellationFee);
+    const refundPercentage = amountPaid > 0 ? Math.round((refundAmount / amountPaid) * 100) : 0;
+    const refundStatus = refundAmount > 0 ? 'pending' : 'completed';
 
     // Update booking status with refund information
     await db.query(
@@ -415,9 +525,9 @@ export const cancelBooking = async (req, res) => {
            cancelled_at = CURRENT_TIMESTAMP,
            refund_amount = $2,
            refund_percentage = $3,
-           refund_status = 'pending'
-       WHERE booking_id = $4`,
-      [reason || 'User requested cancellation', refundAmount, refundPercentage, id]
+           refund_status = $4
+       WHERE booking_id = $5`,
+      [reason || 'User requested cancellation', refundAmount, refundPercentage, refundStatus, id]
     );
 
     // Import notification service

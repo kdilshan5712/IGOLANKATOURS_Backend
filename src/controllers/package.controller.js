@@ -523,6 +523,29 @@ export const calculatePackagePrice = async (req, res) => {
       numChildren
     );
 
+    // 🔥 Check for active promotions and apply global discount percentage
+    const activePromosResult = await db.query(`
+      SELECT discount_percentage FROM promotions 
+      WHERE is_active = true 
+        AND (start_date IS NULL OR start_date <= NOW())
+        AND (end_date IS NULL OR end_date >= NOW())
+      ORDER BY discount_percentage DESC LIMIT 1
+    `);
+    
+    let maxDiscount = 0;
+    if (activePromosResult.rows.length > 0) {
+      maxDiscount = activePromosResult.rows[0].discount_percentage || 0;
+    }
+
+    if (maxDiscount > 0) {
+      pricing.originalTotalPrice = pricing.totalPrice;
+      pricing.originalPricePerPerson = pricing.pricePerPerson;
+      
+      pricing.totalPrice = Math.round(pricing.totalPrice * (1 - maxDiscount / 100));
+      pricing.pricePerPerson = Math.round(pricing.pricePerPerson * (1 - maxDiscount / 100));
+      pricing.appliedPromotionDiscount = maxDiscount;
+    }
+
     res.json({
       success: true,
       pricing

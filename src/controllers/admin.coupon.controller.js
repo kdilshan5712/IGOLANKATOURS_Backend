@@ -95,17 +95,26 @@ export const createCoupon = async (req, res) => {
 export const updateCoupon = async (req, res) => {
     try {
         const { id } = req.params;
-        const { is_active, expiry_date, usage_limit } = req.body;
+        const { is_active, expiry_date, usage_limit, min_amount, max_discount } = req.body;
 
         const result = await db.query(`
             UPDATE coupons
-            SET is_active = COALESCE($1, is_active),
-                expiry_date = COALESCE($2, expiry_date),
-                usage_limit = COALESCE($3, usage_limit),
-                updated_at = NOW()
-            WHERE coupon_id = $4
+            SET is_active    = COALESCE($1, is_active),
+                expiry_date  = COALESCE($2, expiry_date),
+                usage_limit  = COALESCE($3, usage_limit),
+                min_amount   = COALESCE($4, min_amount),
+                max_discount = COALESCE($5, max_discount),
+                updated_at   = NOW()
+            WHERE coupon_id = $6
             RETURNING *
-        `, [is_active, expiry_date, usage_limit, id]);
+        `, [
+            is_active  !== undefined ? is_active  : null,
+            expiry_date  || null,
+            usage_limit  || null,
+            min_amount   !== undefined && min_amount !== '' ? min_amount  : null,
+            max_discount !== undefined && max_discount !== '' ? max_discount : null,
+            id
+        ]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ success: false, message: "Coupon not found" });

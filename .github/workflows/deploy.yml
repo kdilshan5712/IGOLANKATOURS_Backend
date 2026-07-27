@@ -106,6 +106,21 @@ jobs:
           resourceGroup: ${{ env.RESOURCE_GROUP }}
           imageToDeploy: ${{ env.ACR_URL }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
 
+      # CRITICAL: Ensure production env vars are set on the running container.
+      # NODE_ENV=production forces PayHere live mode (not sandbox).
+      # PAYHERE_SANDBOX=false is an explicit safety net.
+      # These override anything that might be baked into the Docker image.
+      - name: Set production environment variables on Container App
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --set-env-vars \
+              NODE_ENV=production \
+              PAYHERE_SANDBOX=false \
+              PAYHERE_CURRENCY=LKR \
+              PAYHERE_USD_TO_LKR=320
+
       - name: Verify deployment health
         run: |
           echo "Waiting 30s for container to start..."
